@@ -1,0 +1,45 @@
+{
+  "name": "mcp-security-lab",
+  "version": "0.2.0",
+  "description": "Evidence-first security checks for local MCP servers.",
+  "type": "module",
+  "bin": {
+    "mcpsl": "./dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test dist/test/**/*.test.js",
+    "scan:fixture": "npm run build && node dist/src/cli.js scan --config examples/insecure-server.json --execute",
+    "prepack": "npm run test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "security",
+    "model-context-protocol",
+    "prompt-injection",
+    "cli"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "typescript": "7.0.2",
+    "yaml": "2.9.0"
+  },
+  "overrides": {
+    "@hono/node-server": "2.0.11"
+  }
+}

@@ -1,0 +1,85 @@
+name: MCP Security Lab
+description: Audit a local MCP server and upload deterministic SARIF findings.
+author: MCP Security Lab contributors
+
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  config:
+    description: Path to the MCP Security Lab JSON configuration in the caller repository.
+    required: true
+  execute:
+    description: Start the configured server and inspect advertised MCP tool metadata.
+    required: false
+    default: "false"
+  upload-sarif:
+    description: Upload the generated SARIF file to GitHub code scanning.
+    required: false
+    default: "true"
+  fail-on-findings:
+    description: Fail after SARIF upload when high or critical findings exist.
+    required: false
+    default: "true"
+
+outputs:
+  sarif:
+    description: Absolute path to the generated SARIF file.
+    value: ${{ steps.scan.outputs.sarif }}
+  policy-exit-code:
+    description: Scanner exit code, where 0 is clean and 2 means policy findings.
+    value: ${{ steps.scan.outputs.policy_exit_code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install MCP Security Lab
+      shell: bash
+      env:
+        MCP_SECURITY_LAB_NPM_CACHE: ${{ runner.temp }}/mcp-security-lab-npm
+      run: >-
+        npm ci
+        --ignore-scripts
+        --prefix "$GITHUB_ACTION_PATH"
+        --cache "$MCP_SECURITY_LAB_NPM_CACHE"
+
+    - name: Build MCP Security Lab
+      shell: bash
+      run: npm --prefix "$GITHUB_ACTION_PATH" run build
+
+    - name: Scan MCP server
+      id: scan
+      shell: bash
+      env:
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_EXECUTE: ${{ inputs.execute }}
+        SARIF_PATH: ${{ runner.temp }}/mcp-security-lab.sarif
+      run: |
+        args=(scan --config "$INPUT_CONFIG" --format sarif --output "$SARIF_PATH")
+        if [[ "$INPUT_EXECUTE" == "true" ]]; then
+          args+=(--execute)
+        fi
+
+        status=0
+        node "$GITHUB_ACTION_PATH/dist/src/cli.js" "${args[@]}" || status=$?
+        if [[ "$status" -ne 0 && "$status" -ne 2 ]]; then
+          exit "$status"
+        fi
+
+        echo "sarif=$SARIF_PATH" >> "$GITHUB_OUTPUT"
+        echo "policy_exit_code=$status" >> "$GITHUB_OUTPUT"
+
+    - name: Upload SARIF
+      if: ${{ inputs.upload-sarif == 'true' }}
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif }}
+        category: mcp-security-lab
+
+    - name: Enforce findings policy
+      if: ${{ inputs.fail-on-findings == 'true' && steps.scan.outputs.policy_exit_code == '2' }}
+      shell: bash
+      run: |
+        echo "MCP Security Lab found high or critical issues." >&2
+        exit 2

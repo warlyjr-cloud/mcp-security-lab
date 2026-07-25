@@ -1,0 +1,13 @@
+{
+  "target": {
+    "command": "node",
+    "args": [
+      "dist/test/fixtures/insecure-server.js"
+    ],
+    "cwd": ".."
+  },
+  "policy": {
+    "timeoutMs": 5000,
+    "maxTools": 100
+  }
+}
