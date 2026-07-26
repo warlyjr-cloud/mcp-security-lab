@@ -68,10 +68,14 @@ export async function loadConfig(configPath: string): Promise<ScanConfig> {
   assertRecord(parsed, "Config");
   assertRecord(parsed.target, "target");
 
-  const { command, args = [], cwd = ".", env = {}, url } = parsed.target;
+  const { command, args = [], cwd = ".", env = {}, url, transport = "http" } = parsed.target;
 
   if (url !== undefined && typeof url !== "string") {
     throw new Error("target.url must be a string if provided.");
+  }
+
+  if (transport !== "http" && transport !== "sse") {
+    throw new Error('target.transport must be "http" or "sse".');
   }
 
   if (url === undefined) {
@@ -92,7 +96,7 @@ export async function loadConfig(configPath: string): Promise<ScanConfig> {
   return {
     target: {
       ...(url !== undefined
-        ? { url: url as string }
+        ? { url: url as string, transport: transport as "http" | "sse" }
         : {
             command: command as string,
             args: [...(args as string[])],

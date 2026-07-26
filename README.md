@@ -77,6 +77,29 @@ Exit codes:
 - `1`: invalid input or runtime failure
 - `2`: scan completed with at least one high or critical finding
 
+## Remote servers
+
+To scan a remote MCP server, give the target a `url` instead of a `command`:
+
+```json
+{
+  "target": {
+    "url": "https://mcp.example.com/mcp",
+    "transport": "http"
+  },
+  "policy": { "timeoutMs": 5000, "maxTools": 100 }
+}
+```
+
+`transport` defaults to `"http"` (the modern **Streamable HTTP** transport); use `"sse"` only for
+legacy servers. Remote targets are checked for plaintext HTTP on non-local hosts (`REMOTE002`),
+credentials embedded in the URL (`REMOTE003`, redacted from the report), and — with `--execute` —
+whether the server accepts unauthenticated connections (`REMOTE004`). See [docs/RULES.md](docs/RULES.md).
+
+```powershell
+node dist/src/cli.js scan --config examples/remote-server.json --execute
+```
+
 ## Active probing (fuzzing)
 
 By default the scanner never invokes a discovered tool. Active probing is opt-in through `--fuzz`,
@@ -134,12 +157,12 @@ Without `--sandbox docker`, `--execute` provides no OS-level filesystem or netwo
 server runs with the current user's permissions. Use `--sandbox docker` (which runs the target in a
 `--network none` container) or a disposable VM for untrusted software. The Docker adapter is
 POSIX-oriented; Windows paths are translated for bind-mounts but Docker Desktop must be running.
-Remote scanning currently uses the SSE transport; the modern Streamable HTTP transport is on the
-roadmap. See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
+Remote scanning uses the Streamable HTTP transport by default (SSE is available for legacy servers).
+See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
 
 ## Roadmap
 
 1. Windows Sandbox execution adapter (Docker container adapter shipped).
 2. Explicit, synthetic tool-call scenarios with canary files and blocked egress.
-3. Remote Streamable HTTP and OAuth security checks.
+3. Deeper OAuth checks for remote servers (Streamable HTTP transport and basic remote checks shipped).
 4. Public conformance corpus maintained with the MCP community.

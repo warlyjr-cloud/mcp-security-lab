@@ -21,6 +21,8 @@ export interface TargetConfig {
   cwd?: string;
   env?: Record<string, string>;
   url?: string;
+  /** Remote transport. Defaults to "http" (Streamable HTTP); "sse" is legacy. */
+  transport?: "http" | "sse";
 }
 
 export interface ScanPolicy {
@@ -66,7 +68,7 @@ export interface ScanReport {
     requested: boolean;
     connected: boolean;
     toolsInvoked: number;
-    transport: "stdio" | "sse";
+    transport: "stdio" | "sse" | "http";
     environmentMode: "allowlist" | "none";
     osSandboxed: boolean;
     limitations: string[];

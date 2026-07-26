@@ -53,6 +53,33 @@ export function createSanitizedEnvironment(
   return environment;
 }
 
+const SENSITIVE_QUERY_KEY_PATTERN =
+  /^(api[-_]?key|access[-_]?token|auth|authorization|credential|key|password|secret|token)$/i;
+
+/**
+ * Remove credentials from a URL before it enters a report: strip any userinfo
+ * (`user:pass@`) and redact the value of sensitive query parameters. Falls back
+ * to a coarse regex when the string is not a parseable URL.
+ */
+export function redactUrl(rawUrl: string): string {
+  try {
+    const url = new URL(rawUrl);
+    if (url.username !== "" || url.password !== "") {
+      url.username = "[REDACTED]";
+      url.password = "";
+    }
+    for (const key of [...url.searchParams.keys()]) {
+      if (SENSITIVE_QUERY_KEY_PATTERN.test(key)) {
+        url.searchParams.set(key, "[REDACTED]");
+      }
+    }
+    // URL percent-encodes the brackets of our sentinel; restore it for readability.
+    return url.toString().replace(/%5BREDACTED%5D/g, "[REDACTED]");
+  } catch {
+    return rawUrl.replace(URL_CREDENTIAL_PATTERN, "$1[REDACTED]@");
+  }
+}
+
 export function redactArguments(args: string[]): string[] {
   const redacted: string[] = [];
   let redactNext = false;

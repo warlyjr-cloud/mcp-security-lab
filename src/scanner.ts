@@ -1,11 +1,14 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
-import { createSanitizedEnvironment, redactArguments } from "./environment.js";
+import { createSanitizedEnvironment, redactArguments, redactUrl } from "./environment.js";
 import { scanTextForInjection } from "./rules/injection.js";
 import { inspectLaunch } from "./rules/launch.js";
+import { inspectRemote, unauthenticatedAccessFinding } from "./rules/remote.js";
 import {
   inspectServerCapabilities,
   inspectServerInstructions,
@@ -123,7 +126,7 @@ async function discover(
   fuzz: boolean,
 ): Promise<{ server: ServerMetadata; findings: Finding[]; toolsInvoked: number }> {
   const client = new Client({ name: "mcp-security-lab", version: VERSION }, { capabilities: {} });
-  const isSse = config.target.url !== undefined;
+  const isRemote = config.target.url !== undefined;
   const findings: Finding[] = [];
 
   let stdioCommand = config.target.command as string;
@@ -134,7 +137,7 @@ async function discover(
     MCP_SECURITY_LAB: "1",
   };
 
-  if (!isSse && sandbox === "docker") {
+  if (!isRemote && sandbox === "docker") {
     stdioCommand = "docker";
     stdioArgs = [
       "run",
@@ -153,8 +156,10 @@ async function discover(
     ];
   }
 
-  const transport = isSse
-    ? new SSEClientTransport(new URL(config.target.url as string))
+  const transport = isRemote
+    ? config.target.transport === "sse"
+      ? new SSEClientTransport(new URL(config.target.url as string))
+      : new StreamableHTTPClientTransport(new URL(config.target.url as string))
     : new StdioClientTransport({
         command: stdioCommand,
         args: stdioArgs,
@@ -167,7 +172,13 @@ async function discover(
       });
 
   try {
-    await withTimeout(client.connect(transport), config.policy.timeoutMs, "MCP initialization");
+    // The SDK's transports don't satisfy their own Transport interface under
+    // exactOptionalPropertyTypes (sessionId optionality); the cast is safe.
+    await withTimeout(
+      client.connect(transport as Transport),
+      config.policy.timeoutMs,
+      "MCP initialization",
+    );
     const response = await withTimeout(
       client.listTools(),
       config.policy.timeoutMs,
@@ -201,6 +212,12 @@ async function discover(
     }));
     findings.push(...tools.flatMap(inspectTool));
     findings.push(...inspectServerCapabilities(tools));
+
+    // We never supply credentials, so a successful remote handshake means the
+    // server allowed anonymous access.
+    if (isRemote) {
+      findings.push(unauthenticatedAccessFinding());
+    }
 
     const serverVersion = client.getServerVersion();
     const instructions = client.getInstructions();
@@ -379,7 +396,7 @@ export async function scan(
     );
   }
 
-  const findings = inspectLaunch(config.target);
+  const findings = [...inspectLaunch(config.target), ...inspectRemote(config.target)];
   let server: ServerMetadata | undefined;
   let toolsInvoked = 0;
 
@@ -416,7 +433,7 @@ export async function scan(
     },
     target:
       config.target.url !== undefined
-        ? { url: config.target.url }
+        ? { url: redactUrl(config.target.url) }
         : {
             command: config.target.command as string,
             args: redactArguments(config.target.args as string[]),
@@ -426,7 +443,12 @@ export async function scan(
       requested: execute,
       connected: server !== undefined,
       toolsInvoked,
-      transport: config.target.url !== undefined ? "sse" : "stdio",
+      transport:
+        config.target.url !== undefined
+          ? config.target.transport === "sse"
+            ? "sse"
+            : "http"
+          : "stdio",
       environmentMode: config.target.url !== undefined ? "none" : "allowlist",
       osSandboxed: sandbox === "docker",
       limitations:
