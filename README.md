@@ -9,10 +9,18 @@ Evidence-first security checks for local and remote Model Context Protocol (MCP)
 > **MCP Security Lab is a DevSecOps DevTool that automatically audits Model Context Protocol (MCP) servers for prompt injections, context window exhaustion, and unsafe tool schemas without requiring an LLM or API keys. It runs natively in CI/CD pipelines (SARIF 2.1.0) and supports Docker Sandboxing for safe active probing.**
 
 The MVP audits how a local or remote MCP server is launched and what it advertises during the MCP
-handshake. It detects risky launcher patterns, missing tool annotations, mixed read/write
-interfaces, overly broad schemas, context exhaustion risks, and prompt-injection-like tool descriptions.
-It does not call discovered tools and does not require an LLM or API key. Reports can be emitted as text,
-JSON, or SARIF 2.1.0.
+handshake. It detects risky launcher patterns (including inline code execution and encoded payloads),
+missing tool annotations, mixed read/write interfaces, least-privilege violations, overly broad
+schemas, context exhaustion risks, and prompt-injection-like text. Prompt-injection scanning covers
+the full surface a server injects into the model's context — tool descriptions, annotation titles,
+parameter names, enum values, server instructions, and every advertised **prompt** and **resource** —
+and is resilient to Unicode evasion (homoglyphs, zero-width and bidirectional characters).
+
+Every finding is mapped to a **CWE** and, where relevant, to the **OWASP Top 10 for LLM Applications**,
+and this taxonomy is emitted in the SARIF output. By default the scanner does not call discovered
+tools and requires no LLM or API key. Reports can be emitted as text, JSON, or SARIF 2.1.0. The full
+rule catalog is documented in [docs/RULES.md](docs/RULES.md); the trust boundaries are described in
+[THREAT_MODEL.md](THREAT_MODEL.md).
 
 ## Why this exists
 
@@ -38,7 +46,7 @@ target command will run and enables MCP discovery.
 {
   "target": {
     "command": "node",
-    "args": ["dist/test/fixtures/insecure-server.js"],
+    "args": ["dist/fixtures/insecure-server.js"],
     "cwd": "."
   },
   "policy": {
@@ -68,6 +76,21 @@ Exit codes:
 - `0`: scan completed without high or critical findings
 - `1`: invalid input or runtime failure
 - `2`: scan completed with at least one high or critical finding
+
+## Active probing (fuzzing)
+
+By default the scanner never invokes a discovered tool. Active probing is opt-in through `--fuzz`,
+which sends malformed and injection-shaped arguments to each tool to see whether the server validates
+input or crashes/hangs. Because this executes tool code, `--fuzz` **requires both `--execute` and
+`--sandbox docker`** so the target is network-isolated; the scanner refuses to fuzz on the host.
+
+```powershell
+node dist/src/cli.js scan --config examples/vulnerable-server.json --execute --sandbox docker --fuzz
+```
+
+`examples/vulnerable-server.json` targets a bundled honeypot (`fixtures/honeypot.ts`) that intentionally
+crashes on malicious input, so this command demonstrates a `FUZZ001` critical finding. A well-behaved
+server that returns a proper MCP error for bad input produces no fuzzing finding.
 
 ## GitHub Action
 
@@ -107,13 +130,16 @@ or credentials.
 
 ## Current limitations
 
-This MVP does not provide OS-level filesystem or network isolation. A server started with
-`--execute` still runs with the current user's permissions. Use a disposable VM or container
-for untrusted software. See [SECURITY.md](SECURITY.md).
+Without `--sandbox docker`, `--execute` provides no OS-level filesystem or network isolation: the
+server runs with the current user's permissions. Use `--sandbox docker` (which runs the target in a
+`--network none` container) or a disposable VM for untrusted software. The Docker adapter is
+POSIX-oriented; Windows paths are translated for bind-mounts but Docker Desktop must be running.
+Remote scanning currently uses the SSE transport; the modern Streamable HTTP transport is on the
+roadmap. See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
 
 ## Roadmap
 
-1. Container and Windows Sandbox execution adapters.
+1. Windows Sandbox execution adapter (Docker container adapter shipped).
 2. Explicit, synthetic tool-call scenarios with canary files and blocked egress.
 3. Remote Streamable HTTP and OAuth security checks.
 4. Public conformance corpus maintained with the MCP community.

@@ -5,6 +5,8 @@ import test from "node:test";
 import { parse } from "yaml";
 
 test("GitHub Action manifest is valid and uploads SARIF with the current major action", async () => {
+  // The manifest is dynamic YAML; `any` lets the test assert its shape directly.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const manifest = parse(await readFile("action.yml", "utf8")) as Record<string, any>;
 
   assert.equal(manifest.name, "MCP Security Lab");

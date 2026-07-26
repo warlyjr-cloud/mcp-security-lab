@@ -19,13 +19,15 @@ interface CliOptions {
 function usage(): string {
   return [
     "Usage:",
-    "  mcpsl scan --config <path> [--execute] [--format text|json|sarif] [--output <path>]",
+    "  mcpsl scan --config <path> [--execute] [--sandbox docker|none] [--fuzz]",
+    "            [--format text|json|sarif] [--output <path>]",
     "",
     "Safety:",
     "  Without --execute, only the launch configuration is inspected.",
     "  With --execute, the target starts with a filtered environment; its tools are never called.",
     "  Use --sandbox docker to run the target inside a disposable Docker container.",
     "  Use --fuzz to actively call discovered tools with malicious inputs (DANGEROUS).",
+    "  --fuzz requires --execute and --sandbox docker so probing stays isolated.",
   ].join("\n");
 }
 

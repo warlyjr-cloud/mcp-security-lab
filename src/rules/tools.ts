@@ -1,18 +1,5 @@
 import type { Finding, ToolMetadata } from "../types.js";
-
-const PROMPT_INJECTION_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
-  {
-    pattern: /\bignore (?:all |any )?(?:previous|prior) instructions?\b/i,
-    label: "instruction override",
-  },
-  {
-    pattern: /\b(?:always|must) (?:call|invoke|use) (?:this|the) tool\b/i,
-    label: "forced invocation",
-  },
-  { pattern: /\bdo not (?:tell|inform|show) the user\b/i, label: "concealment" },
-  { pattern: /\b(?:system prompt|hidden instructions?)\b/i, label: "hidden prompt reference" },
-  { pattern: /\bdisable|bypass\b.{0,30}\b(?:safety|security|permission)/i, label: "safety bypass" },
-];
+import { scanTextForInjection } from "./injection.js";
 
 const DESTRUCTIVE_NAME_PATTERN =
   /(?:^|[_-])(delete|drop|destroy|remove|reset|purge|revoke|send|publish|deploy)(?:$|[_-])/i;
@@ -29,6 +16,44 @@ function propertiesOf(schema: Record<string, unknown>): Record<string, unknown> 
 function annotationBoolean(tool: ToolMetadata, key: string): boolean | undefined {
   const value = tool.annotations?.[key];
   return typeof value === "boolean" ? value : undefined;
+}
+
+/**
+ * Collect every untrusted string a server places into the model's context for a
+ * tool: the description, the annotation title, and each parameter's name,
+ * description, and string-literal enum values. Injection can hide in any of
+ * these, not only in the top-level description.
+ */
+function injectionSurface(tool: ToolMetadata): Array<{ text: string; sourceLabel: string }> {
+  const surface: Array<{ text: string; sourceLabel: string }> = [];
+
+  if (typeof tool.description === "string") {
+    surface.push({ text: tool.description, sourceLabel: "description" });
+  }
+
+  const title = tool.annotations?.title;
+  if (typeof title === "string") {
+    surface.push({ text: title, sourceLabel: "annotation title" });
+  }
+
+  for (const [name, schema] of Object.entries(propertiesOf(tool.inputSchema))) {
+    surface.push({ text: name, sourceLabel: `parameter name "${name}"` });
+    if (typeof schema === "object" && schema !== null && !Array.isArray(schema)) {
+      const record = schema as Record<string, unknown>;
+      if (typeof record.description === "string") {
+        surface.push({ text: record.description, sourceLabel: `parameter "${name}" description` });
+      }
+      if (Array.isArray(record.enum)) {
+        for (const value of record.enum) {
+          if (typeof value === "string") {
+            surface.push({ text: value, sourceLabel: `parameter "${name}" enum value` });
+          }
+        }
+      }
+    }
+  }
+
+  return surface;
 }
 
 export function inspectServerCapabilities(tools: ToolMetadata[]): Finding[] {
@@ -57,10 +82,30 @@ export function inspectServerCapabilities(tools: ToolMetadata[]): Finding[] {
       recommendation:
         "Separate read and write capabilities into different MCP servers or require explicit user confirmation for write operations.",
       location: "server",
+      cwe: "CWE-250",
+      owasp: "LLM08",
     });
   }
 
   return findings;
+}
+
+/**
+ * Inspect the server-level instructions returned during the MCP handshake.
+ * These are injected verbatim into the model's context, so injection here is
+ * as dangerous as in any tool description.
+ */
+export function inspectServerInstructions(instructions: string | undefined): Finding[] {
+  if (typeof instructions !== "string") {
+    return [];
+  }
+  return scanTextForInjection(instructions, "server", "server instructions").map((finding) => ({
+    ...finding,
+    title:
+      finding.id === "TOOL003"
+        ? "Server instructions contain a prompt-injection-like instruction"
+        : finding.title,
+  }));
 }
 
 export function inspectTool(tool: ToolMetadata): Finding[] {
@@ -77,6 +122,7 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
       evidence: `Tool name has ${tool.name.length} characters.`,
       recommendation: "Use a stable tool name with at most 64 characters.",
       location,
+      cwe: "CWE-20",
     });
   }
 
@@ -91,17 +137,8 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
     });
   }
 
-  for (const candidate of PROMPT_INJECTION_PATTERNS) {
-    if (candidate.pattern.test(description)) {
-      findings.push({
-        id: "TOOL003",
-        severity: "high",
-        title: "Tool description contains a prompt-injection-like instruction",
-        evidence: `Description matched the ${candidate.label} pattern.`,
-        recommendation: "Describe functionality only; remove behavioral or hidden instructions.",
-        location,
-      });
-    }
+  for (const { text, sourceLabel } of injectionSurface(tool)) {
+    findings.push(...scanTextForInjection(text, location, sourceLabel));
   }
 
   if (typeof annotations.title !== "string" || annotations.title.trim() === "") {
@@ -125,6 +162,7 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
       evidence: "Neither destructiveHint nor readOnlyHint is explicitly declared.",
       recommendation: "Declare the applicable MCP safety annotations explicitly.",
       location,
+      cwe: "CWE-1188",
     });
   }
 
@@ -136,6 +174,8 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
       evidence: `Tool name "${tool.name}" implies an external side effect.`,
       recommendation: "Set destructiveHint to true and keep the operation narrowly scoped.",
       location,
+      cwe: "CWE-250",
+      owasp: "LLM08",
     });
   }
 
@@ -170,6 +210,8 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
           evidence: `method enum contains both safe and unsafe HTTP methods: ${[...methods].join(", ")}.`,
           recommendation: "Split read operations from create, update, and delete tools.",
           location,
+          cwe: "CWE-250",
+          owasp: "LLM08",
         });
       }
     }
@@ -183,6 +225,7 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
       evidence: "inputSchema.additionalProperties is not explicitly false.",
       recommendation: "Reject unknown input fields when the server framework supports it.",
       location,
+      cwe: "CWE-20",
     });
   }
 
@@ -199,6 +242,8 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
       evidence: "Tool name implies reading, but inputSchema lacks limit, cursor, or offset fields.",
       recommendation: "Implement pagination limits to prevent context window exhaustion attacks.",
       location,
+      cwe: "CWE-400",
+      owasp: "LLM10",
     });
   }
 

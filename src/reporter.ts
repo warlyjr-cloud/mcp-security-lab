@@ -23,6 +23,7 @@ interface SarifRule {
   fullDescription: { text: string };
   defaultConfiguration: { level: SarifLevel };
   help: { text: string; markdown: string };
+  properties?: { tags: string[]; cwe?: string; owasp?: string };
 }
 
 function sarifLevel(severity: Severity): SarifLevel {
@@ -72,6 +73,19 @@ export function reportAsSarif(
 
   for (const finding of report.findings) {
     if (!rules.has(finding.id)) {
+      const tags = ["security", "mcp"];
+      if (finding.cwe !== undefined) {
+        tags.push(`external/cwe/${finding.cwe.toLowerCase()}`);
+      }
+      if (finding.owasp !== undefined) {
+        tags.push(`external/owasp-llm/${finding.owasp.toLowerCase()}`);
+      }
+      const taxonomy = [
+        finding.cwe === undefined ? undefined : `CWE: ${finding.cwe}`,
+        finding.owasp === undefined ? undefined : `OWASP LLM: ${finding.owasp}`,
+      ]
+        .filter((entry): entry is string => entry !== undefined)
+        .join(" | ");
       rules.set(finding.id, {
         id: finding.id,
         shortDescription: { text: finding.title },
@@ -79,7 +93,14 @@ export function reportAsSarif(
         defaultConfiguration: { level: sarifLevel(finding.severity) },
         help: {
           text: finding.recommendation,
-          markdown: `**Recommendation:** ${finding.recommendation}`,
+          markdown: `**Recommendation:** ${finding.recommendation}${
+            taxonomy === "" ? "" : `\n\n**Taxonomy:** ${taxonomy}`
+          }`,
+        },
+        properties: {
+          tags,
+          ...(finding.cwe === undefined ? {} : { cwe: finding.cwe }),
+          ...(finding.owasp === undefined ? {} : { owasp: finding.owasp }),
         },
       });
     }
@@ -140,6 +161,8 @@ export function reportAsSarif(
             severity: finding.severity,
             recommendation: finding.recommendation,
             scannerLocation: finding.location ?? "scan",
+            ...(finding.cwe === undefined ? {} : { cwe: finding.cwe }),
+            ...(finding.owasp === undefined ? {} : { owasp: finding.owasp }),
           },
         })),
       },
@@ -158,7 +181,7 @@ export function reportAsText(report: ScanReport): string {
   const lines = [
     "MCP Security Lab",
     `Target: ${targetLabel}`,
-    `Connected: ${report.execution.connected ? "yes" : "no"} | Transport: ${report.execution.transport} | Tools invoked: ${report.execution.toolsInvoked} | OS sandbox: no`,
+    `Connected: ${report.execution.connected ? "yes" : "no"} | Transport: ${report.execution.transport} | Tools invoked: ${report.execution.toolsInvoked} | OS sandbox: ${report.execution.osSandboxed ? "yes" : "no"}`,
     `Findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`,
     "",
   ];
@@ -167,12 +190,20 @@ export function reportAsText(report: ScanReport): string {
     lines.push(`[${ICONS[finding.severity]}] ${finding.id} ${finding.title}`);
     lines.push(`  Evidence: ${finding.evidence}`);
     lines.push(`  Recommendation: ${finding.recommendation}`);
+    const taxonomy = [finding.cwe, finding.owasp].filter(Boolean).join(", ");
+    if (taxonomy !== "") {
+      lines.push(`  Taxonomy: ${taxonomy}`);
+    }
     if (finding.location !== undefined) {
       lines.push(`  Location: ${finding.location}`);
     }
     lines.push("");
   }
 
-  lines.push("Limitation: target processes are not isolated from the host filesystem or network.");
+  lines.push(
+    report.execution.osSandboxed
+      ? "Note: target ran inside a network-isolated Docker container."
+      : "Limitation: target processes are not isolated from the host filesystem or network.",
+  );
   return `${lines.join("\n")}\n`;
 }
