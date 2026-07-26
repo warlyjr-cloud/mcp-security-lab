@@ -1,26 +1,26 @@
 ---
 name: Bug report
-about: Report incorrect behaviour in the scanner or its reports
-title: "[Bug] "
+about: Create a report to help us improve mcp-security-lab
+title: "[BUG] "
 labels: bug
+assignees: ""
 ---
 
-## What happened
+**Describe the bug**
+A clear and concise description of what the bug is.
 
-A clear description of the incorrect behaviour.
+**To Reproduce**
+Steps to reproduce the behavior:
 
-## Expected behaviour
+1. Run command '...'
+2. Configuration file used '...'
+3. See error
 
-What you expected the scanner to report instead.
+**Expected behavior**
+A clear and concise description of what you expected to happen.
 
-## Reproduction
+**Environment:**
 
-The exact command you ran and the configuration file used. Please redact any credentials and do not attach reports produced against third-party servers.
-
-## Output
-
-The relevant portion of the text, JSON, or SARIF report, plus the exit code.
-
-## Environment
-
-Operating system, Node.js version, and the project version or commit.
+- OS: [e.g. Ubuntu 22.04, macOS, Windows]
+- Node.js version: [e.g. 20.x]
+- Package/CLI version: [e.g. 0.2.0]
