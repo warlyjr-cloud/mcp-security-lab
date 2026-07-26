@@ -168,6 +168,14 @@ node dist/src/cli.js scan --config examples/vulnerable-server.json --execute --s
 crashes on malicious input, so this command demonstrates a `FUZZ001` critical finding. A well-behaved
 server that returns a proper MCP error for bad input produces no fuzzing finding.
 
+## 🚀 Version 1.0.0 Golden Key Features (AI-Driven)
+
+The v1.0.0 release introduces 3 major AI-driven capabilities for DevSecOps:
+
+1. **Auto-Remediation (`--auto-fix`)**: Connects to the Anthropic API (requires `ANTHROPIC_API_KEY`) to generate a `MCP_REMEDIATION.md` file with precise code snippets and instructions on how to patch vulnerabilities detected during the scan.
+2. **Zero-Trust Firewall Generator (`--generate-firewall`)**: Generates an `mcp-firewall.json` policy that you can use to block malicious or unauthenticated tools based on the scan results.
+3. **Cyber-Consultant TUI (`--format dashboard`)**: Run in dashboard mode and press `c` while highlighting a vulnerability to open a built-in terminal chat session. You can talk to an AI Security Consultant to ask for live help on fixing the specific issue.
+
 ## GitHub Action
 
 The repository includes a composite action that generates SARIF and can upload it to GitHub
@@ -188,7 +196,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: warlyjr-cloud/mcp-security-lab@v0.3.0
+      - uses: warlyjr-cloud/mcp-security-lab@v1.0.0
         with:
           config: mcp-security-lab.json
           execute: "true"

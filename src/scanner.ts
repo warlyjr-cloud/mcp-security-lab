@@ -26,7 +26,7 @@ import type {
   ToolMetadata,
 } from "./types.js";
 
-const VERSION = "0.3.0";
+const VERSION = "1.0.0";
 const SEVERITIES: Severity[] = ["info", "low", "medium", "high", "critical"];
 
 // Upper bound on the serialized size of discovery responses. A hostile server
