@@ -43,12 +43,9 @@ function artifactUri(configPath: string, workspaceRoot: string): string {
   const absoluteWorkspaceRoot = resolve(workspaceRoot);
   const relativePath = relative(absoluteWorkspaceRoot, absoluteConfigPath);
   const outsideWorkspace =
-    relativePath === ".." ||
-    relativePath.startsWith(`..${sep}`) ||
-    isAbsolute(relativePath);
-  return (outsideWorkspace
-    ? basename(absoluteConfigPath)
-    : relativePath || basename(absoluteConfigPath)
+    relativePath === ".." || relativePath.startsWith(`..${sep}`) || isAbsolute(relativePath);
+  return (
+    outsideWorkspace ? basename(absoluteConfigPath) : relativePath || basename(absoluteConfigPath)
   )
     .split(sep)
     .join("/");

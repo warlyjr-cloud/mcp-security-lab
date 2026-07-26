@@ -38,13 +38,13 @@ export async function loadConfig(configPath: string): Promise<ScanConfig> {
     parsed = JSON.parse(raw);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Config is not valid JSON: ${message}`);
+    throw new Error(`Config is not valid JSON: ${message}`, { cause: error });
   }
 
   assertRecord(parsed, "Config");
   assertRecord(parsed.target, "target");
 
-  const { command, args = [], cwd = "." } = parsed.target;
+  const { command, args = [], cwd = ".", env = {} } = parsed.target;
   if (typeof command !== "string" || command.trim() === "") {
     throw new Error("target.command must be a non-empty string.");
   }
@@ -53,6 +53,12 @@ export async function loadConfig(configPath: string): Promise<ScanConfig> {
   }
   if (typeof cwd !== "string" || cwd.trim() === "") {
     throw new Error("target.cwd must be a non-empty string.");
+  }
+  assertRecord(env, "target.env");
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value !== "string") {
+      throw new Error(`target.env['${key}'] must be a string.`);
+    }
   }
 
   const policyValue = parsed.policy ?? {};
@@ -63,6 +69,7 @@ export async function loadConfig(configPath: string): Promise<ScanConfig> {
       command,
       args: [...args],
       cwd: resolve(dirname(absoluteConfigPath), cwd),
+      env: { ...(env as Record<string, string>) },
     },
     policy: {
       timeoutMs: readPositiveInteger(

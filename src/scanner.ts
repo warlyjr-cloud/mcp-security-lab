@@ -29,7 +29,10 @@ function summarize(findings: Finding[]): Record<Severity, number> {
 
 function withTimeout<T>(operation: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${label} exceeded ${timeoutMs} ms.`)), timeoutMs);
+    const timer = setTimeout(
+      () => reject(new Error(`${label} exceeded ${timeoutMs} ms.`)),
+      timeoutMs,
+    );
     timer.unref();
     operation.then(
       (value) => {
@@ -52,7 +55,7 @@ async function discover(
     command: config.target.command,
     args: config.target.args,
     cwd: config.target.cwd,
-    env: createSanitizedEnvironment(),
+    env: { ...createSanitizedEnvironment(), ...(config.target.env ?? {}) },
     stderr: "pipe",
   });
 
@@ -115,9 +118,11 @@ export async function scan(config: ScanConfig, execute: boolean): Promise<ScanRe
 
   findings.sort((left, right) => {
     const severityOrder = SEVERITIES.indexOf(right.severity) - SEVERITIES.indexOf(left.severity);
-    return severityOrder ||
+    return (
+      severityOrder ||
       left.id.localeCompare(right.id) ||
-      (left.location ?? "").localeCompare(right.location ?? "");
+      (left.location ?? "").localeCompare(right.location ?? "")
+    );
   });
 
   return {
