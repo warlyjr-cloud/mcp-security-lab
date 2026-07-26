@@ -56,7 +56,7 @@ export interface ScanReport {
   execution: {
     requested: boolean;
     connected: boolean;
-    toolsInvoked: 0;
+    toolsInvoked: number;
     transport: "stdio" | "sse";
     environmentMode: "allowlist" | "none";
     osSandboxed: boolean;

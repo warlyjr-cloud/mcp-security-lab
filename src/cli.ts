@@ -13,6 +13,7 @@ interface CliOptions {
   format: "text" | "json" | "sarif";
   outputPath?: string;
   sandbox: "docker" | "none";
+  fuzz: boolean;
 }
 
 function usage(): string {
@@ -24,6 +25,7 @@ function usage(): string {
     "  Without --execute, only the launch configuration is inspected.",
     "  With --execute, the target starts with a filtered environment; its tools are never called.",
     "  Use --sandbox docker to run the target inside a disposable Docker container.",
+    "  Use --fuzz to actively call discovered tools with malicious inputs (DANGEROUS).",
   ].join("\n");
 }
 
@@ -34,6 +36,7 @@ function parseArgs(args: string[]): CliOptions {
 
   let configPath: string | undefined;
   let execute = false;
+  let fuzz = false;
   let format: "text" | "json" | "sarif" = "text";
   let outputPath: string | undefined;
   let sandbox: "docker" | "none" = "none";
@@ -42,6 +45,10 @@ function parseArgs(args: string[]): CliOptions {
     const argument = args[index];
     if (argument === "--execute") {
       execute = true;
+      continue;
+    }
+    if (argument === "--fuzz") {
+      fuzz = true;
       continue;
     }
     if (
@@ -82,6 +89,7 @@ function parseArgs(args: string[]): CliOptions {
   return {
     configPath,
     execute,
+    fuzz,
     format,
     sandbox,
     ...(outputPath === undefined ? {} : { outputPath }),
@@ -91,7 +99,7 @@ function parseArgs(args: string[]): CliOptions {
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const config = await loadConfig(options.configPath);
-  const report = await scan(config, options.execute, options.sandbox);
+  const report = await scan(config, options.execute, options.sandbox, options.fuzz);
   const output =
     options.format === "json"
       ? reportAsJson(report)

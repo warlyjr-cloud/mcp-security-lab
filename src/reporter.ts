@@ -158,7 +158,7 @@ export function reportAsText(report: ScanReport): string {
   const lines = [
     "MCP Security Lab",
     `Target: ${targetLabel}`,
-    `Connected: ${report.execution.connected ? "yes" : "no"} | Transport: ${report.execution.transport} | Tools invoked: 0 | OS sandbox: no`,
+    `Connected: ${report.execution.connected ? "yes" : "no"} | Transport: ${report.execution.transport} | Tools invoked: ${report.execution.toolsInvoked} | OS sandbox: no`,
     `Findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`,
     "",
   ];

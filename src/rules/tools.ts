@@ -31,6 +31,38 @@ function annotationBoolean(tool: ToolMetadata, key: string): boolean | undefined
   return typeof value === "boolean" ? value : undefined;
 }
 
+export function inspectServerCapabilities(tools: ToolMetadata[]): Finding[] {
+  const findings: Finding[] = [];
+  let hasRead = false;
+  let hasWrite = false;
+
+  for (const tool of tools) {
+    if (READ_NAME_PATTERN.test(tool.name)) {
+      hasRead = true;
+    }
+    if (
+      DESTRUCTIVE_NAME_PATTERN.test(tool.name) ||
+      tool.name.match(/^(?:write|update|set|put|post|create|insert)/i)
+    ) {
+      hasWrite = true;
+    }
+  }
+
+  if (hasRead && hasWrite) {
+    findings.push({
+      id: "TOOL011",
+      severity: "high",
+      title: "Dangerous Capability Combination (Least Privilege Violation)",
+      evidence: "The server exposes both broad READ tools and destructive WRITE tools.",
+      recommendation:
+        "Separate read and write capabilities into different MCP servers or require explicit user confirmation for write operations.",
+      location: "server",
+    });
+  }
+
+  return findings;
+}
+
 export function inspectTool(tool: ToolMetadata): Finding[] {
   const findings: Finding[] = [];
   const location = `tool:${tool.name}`;
