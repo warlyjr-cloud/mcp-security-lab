@@ -24,7 +24,7 @@ export function generateFirewallPolicy(report: ScanReport): Record<string, unkno
   const policy = {
     $schema: "https://mcp-security-lab.github.io/schemas/firewall-v1.json",
     version: "1.0",
-    generatedBy: "MCP Security Lab",
+    generatedBy: "CyberConsult Advanced Security Suite (MCP Verifier)",
     target: report.target.command,
     rules: {
       defaultAction: toolsWithCriticalOrHigh.size > 0 ? "allow" : "allow", // Always allow safe by default, block bad

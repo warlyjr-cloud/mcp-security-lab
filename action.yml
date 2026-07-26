@@ -1,6 +1,6 @@
-name: MCP Security Lab
-description: Audit a local MCP server and upload deterministic SARIF findings.
-author: MCP Security Lab contributors
+name: CyberConsult Advanced Security Suite
+description: Audit a local MCP server with MCP Verifier and upload deterministic SARIF findings.
+author: CyberConsult Advanced Security Suite contributors
 
 branding:
   icon: shield

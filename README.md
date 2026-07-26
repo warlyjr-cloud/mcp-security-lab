@@ -95,7 +95,7 @@ target command will run and enables MCP discovery.
 Scanning the bundled intentionally-insecure fixture (`--execute`):
 
 ```text
-MCP Security Lab
+CyberConsult Advanced Security Suite — MCP Verifier
 Target: node dist/fixtures/insecure-server.js
 Connected: yes | Transport: stdio | Tools invoked: 0 | OS sandbox: no
 Findings: 0 critical, 7 high, 2 medium, 2 low, 0 info
