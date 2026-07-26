@@ -4,13 +4,13 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { loadConfig } from "./config.js";
-import { reportAsJson, reportAsSarif, reportAsText } from "./reporter.js";
+import { reportAsJson, reportAsSarif, reportAsText, reportAsMarkdown } from "./reporter.js";
 import { scan } from "./scanner.js";
 
-interface CliOptions {
+export interface CliOptions {
   configPath: string;
   execute: boolean;
-  format: "text" | "json" | "sarif";
+  format: "text" | "json" | "sarif" | "markdown";
   outputPath?: string;
   sandbox: "docker" | "none";
   fuzz: boolean;
@@ -20,7 +20,7 @@ function usage(): string {
   return [
     "Usage:",
     "  mcpsl scan --config <path> [--execute] [--sandbox docker|none] [--fuzz]",
-    "            [--format text|json|sarif] [--output <path>]",
+    "            [--format text|json|sarif|markdown] [--output <path>]",
     "",
     "Safety:",
     "  Without --execute, only the launch configuration is inspected.",
@@ -39,7 +39,7 @@ function parseArgs(args: string[]): CliOptions {
   let configPath: string | undefined;
   let execute = false;
   let fuzz = false;
-  let format: "text" | "json" | "sarif" = "text";
+  let format: "text" | "json" | "sarif" | "markdown" = "text";
   let outputPath: string | undefined;
   let sandbox: "docker" | "none" = "none";
 
@@ -74,10 +74,12 @@ function parseArgs(args: string[]): CliOptions {
         } else {
           throw new Error("--sandbox must be docker or none.");
         }
-      } else if (value === "text" || value === "json" || value === "sarif") {
-        format = value;
-      } else {
-        throw new Error("--format must be text, json, or sarif.");
+      } else if (argument === "--format") {
+        if (value === "text" || value === "json" || value === "sarif" || value === "markdown") {
+          format = value;
+        } else {
+          throw new Error("--format must be text, json, sarif, or markdown.");
+        }
       }
       continue;
     }
@@ -107,7 +109,9 @@ async function main(): Promise<void> {
       ? reportAsJson(report)
       : options.format === "sarif"
         ? reportAsSarif(report, options.configPath)
-        : reportAsText(report);
+        : options.format === "markdown"
+          ? reportAsMarkdown(report)
+          : reportAsText(report);
 
   if (options.outputPath === undefined) {
     process.stdout.write(output);

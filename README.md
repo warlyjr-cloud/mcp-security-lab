@@ -140,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: warlyjr-cloud/mcp-security-lab@v0.2.0
+      - uses: warlyjr-cloud/mcp-security-lab@v0.3.0
         with:
           config: mcp-security-lab.json
           execute: "true"

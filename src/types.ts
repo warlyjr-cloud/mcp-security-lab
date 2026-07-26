@@ -6,6 +6,7 @@ export interface Finding {
   title: string;
   evidence: string;
   recommendation: string;
+  remediationSnippet?: string;
   location?: string;
   /** CWE identifier, e.g. "CWE-77". */
   cwe?: string;

@@ -207,3 +207,83 @@ export function reportAsText(report: ScanReport): string {
   );
   return `${lines.join("\n")}\n`;
 }
+
+export function reportAsMarkdown(report: ScanReport): string {
+  const targetLabel =
+    report.target.url !== undefined
+      ? report.target.url
+      : `${report.target.command} ${(report.target.args ?? []).join(" ")}`.trim();
+
+  const totalCritical = report.summary.critical;
+  const totalHigh = report.summary.high;
+
+  let grade = "A";
+  let color = "brightgreen";
+  if (totalCritical > 0) {
+    grade = "F";
+    color = "red";
+  } else if (totalHigh > 0) {
+    grade = "C";
+    color = "orange";
+  } else if (report.summary.medium > 0) {
+    grade = "B";
+    color = "yellow";
+  }
+
+  const badgeUrl = `https://img.shields.io/badge/MCP_Security_Lab-Grade_${grade}-${color}?style=for-the-badge`;
+
+  const lines = [
+    `# MCP Security Lab Report`,
+    ``,
+    `![Security Grade](${badgeUrl})`,
+    ``,
+    `## Scan Summary`,
+    `- **Target:** \`${targetLabel}\``,
+    `- **Connected:** ${report.execution.connected ? "Yes" : "No"}`,
+    `- **Transport:** ${report.execution.transport}`,
+    `- **Tools Invoked:** ${report.execution.toolsInvoked}`,
+    `- **OS Sandbox:** ${report.execution.osSandboxed ? "Yes" : "No"}`,
+    ``,
+    `### Findings Summary`,
+    `| Severity | Count |`,
+    `|---|---|`,
+    `| 🔴 **Critical** | ${report.summary.critical} |`,
+    `| 🟠 **High** | ${report.summary.high} |`,
+    `| 🟡 **Medium** | ${report.summary.medium} |`,
+    `| 🔵 **Low** | ${report.summary.low} |`,
+    `| ⚪ **Info** | ${report.summary.info} |`,
+    ``,
+    `## Detailed Findings`,
+    ``,
+  ];
+
+  if (report.findings.length === 0) {
+    lines.push(`*No security findings were detected.*`);
+  } else {
+    for (const finding of report.findings) {
+      lines.push(`### [${finding.severity.toUpperCase()}] ${finding.id}: ${finding.title}`);
+      lines.push(`- **Location:** \`${finding.location ?? "unknown"}\``);
+      if (finding.cwe) lines.push(`- **CWE:** ${finding.cwe}`);
+      if (finding.owasp) lines.push(`- **OWASP:** ${finding.owasp}`);
+      lines.push(``);
+      lines.push(`**Evidence:**`);
+      lines.push(`> ${finding.evidence}`);
+      lines.push(``);
+      lines.push(`**Recommendation:**`);
+      lines.push(`${finding.recommendation}`);
+
+      if (finding.remediationSnippet) {
+        lines.push(``);
+        lines.push(`**Auto-Remediation:**`);
+        lines.push(`\`\`\`typescript`);
+        lines.push(finding.remediationSnippet);
+        lines.push(`\`\`\``);
+      }
+      lines.push(``);
+      lines.push(`---`);
+      lines.push(``);
+    }
+  }
+
+  return lines.join("\n");
+}

@@ -40,6 +40,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "fetch_url",
+        description: "Fetches a URL and returns its content.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            url: { type: "string" },
+          },
+        },
+      },
+      {
         name: "delete_database",
         description: "Drops the production database.",
         inputSchema: {
@@ -54,6 +64,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  if (
+    request.params.arguments &&
+    request.params.arguments.url === "http://169.254.169.254/latest/meta-data/"
+  ) {
+    return {
+      content: [
+        { type: "text", text: "ami-id: ami-0c55b159cbfafe1f0\ninstance-id: i-1234567890abcdef0" },
+      ],
+      isError: false,
+    };
+  }
+
   if (request.params.arguments && request.params.arguments.__fuzz) {
     // Intentionally crash on fuzz input to trigger FUZZ001
     throw new Error("Unhandled Exception: SIGSEGV payload triggered by fuzzer.");

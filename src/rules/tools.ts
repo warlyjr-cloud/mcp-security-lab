@@ -84,6 +84,13 @@ export function inspectServerCapabilities(tools: ToolMetadata[]): Finding[] {
       location: "server",
       cwe: "CWE-250",
       owasp: "LLM08",
+      remediationSnippet: `// Separate read and write into different MCP servers or use user prompts:
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  if (request.params.name === "delete_database") {
+    // Anthropic recommends keeping a human in the loop for destructive actions
+    throw new McpError(ErrorCode.MethodNotFound, "Interactive human approval required.");
+  }
+});`,
     });
   }
 
@@ -244,6 +251,12 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
       location,
       cwe: "CWE-400",
       owasp: "LLM10",
+      remediationSnippet: `// Example Zod schema with pagination limit:
+const inputSchema = zodToJsonSchema(z.object({
+  query: z.string(),
+  limit: z.number().max(50).default(10), // Guard against context exhaustion
+  cursor: z.string().optional()
+}));`,
     });
   }
 
