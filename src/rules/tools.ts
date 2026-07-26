@@ -1,8 +1,14 @@
 import type { Finding, ToolMetadata } from "../types.js";
 
 const PROMPT_INJECTION_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
-  { pattern: /\bignore (?:all |any )?(?:previous|prior) instructions?\b/i, label: "instruction override" },
-  { pattern: /\b(?:always|must) (?:call|invoke|use) (?:this|the) tool\b/i, label: "forced invocation" },
+  {
+    pattern: /\bignore (?:all |any )?(?:previous|prior) instructions?\b/i,
+    label: "instruction override",
+  },
+  {
+    pattern: /\b(?:always|must) (?:call|invoke|use) (?:this|the) tool\b/i,
+    label: "forced invocation",
+  },
   { pattern: /\bdo not (?:tell|inform|show) the user\b/i, label: "concealment" },
   { pattern: /\b(?:system prompt|hidden instructions?)\b/i, label: "hidden prompt reference" },
   { pattern: /\bdisable|bypass\b.{0,30}\b(?:safety|security|permission)/i, label: "safety bypass" },
@@ -10,8 +16,7 @@ const PROMPT_INJECTION_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 
 const DESTRUCTIVE_NAME_PATTERN =
   /(?:^|[_-])(delete|drop|destroy|remove|reset|purge|revoke|send|publish|deploy)(?:$|[_-])/i;
-const READ_NAME_PATTERN =
-  /(?:^|[_-])(get|list|read|search|find|fetch|inspect|describe)(?:$|[_-])/i;
+const READ_NAME_PATTERN = /(?:^|[_-])(get|list|read|search|find|fetch|inspect|describe)(?:$|[_-])/i;
 
 function propertiesOf(schema: Record<string, unknown>): Record<string, unknown> {
   const properties = schema.properties;

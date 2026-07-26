@@ -1,9 +1,7 @@
 {
   "target": {
     "command": "node",
-    "args": [
-      "dist/test/fixtures/insecure-server.js"
-    ],
+    "args": ["dist/fixtures/insecure-server.js"],
     "cwd": ".."
   },
   "policy": {

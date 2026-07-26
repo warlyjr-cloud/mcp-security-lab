@@ -9,7 +9,7 @@ test("scanner discovers metadata without invoking fixture tools", async () => {
     {
       target: {
         command: process.execPath,
-        args: [resolve("dist/test/fixtures/insecure-server.js")],
+        args: [resolve("dist/fixtures/insecure-server.js")],
         cwd: process.cwd(),
       },
       policy: {

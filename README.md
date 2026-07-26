@@ -1,5 +1,9 @@
 # MCP Security Lab
 
+[![CI](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml)
+[![npm version](https://badge.fury.io/js/mcp-security-lab.svg)](https://badge.fury.io/js/mcp-security-lab)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 Evidence-first security checks for local Model Context Protocol servers.
 
 The MVP audits how a local MCP server is launched and what it advertises during the MCP
