@@ -33,7 +33,7 @@ Return ONLY a valid JSON array containing exactly 3 objects. Each object must re
     });
 
     const content = response.content[0];
-    if (content.type !== "text") {
+    if (!content || content.type !== "text") {
       throw new Error("Unexpected response type from Anthropic API.");
     }
 
