@@ -31,6 +31,27 @@ const LEAK_PATTERNS = [
     cwe: "CWE-200",
   },
   {
+    name: "Stripe Secret Key",
+    regex: /sk_live_[a-zA-Z0-9]{24,}/,
+    recommendation:
+      "Stripe payment keys were found in the output. This could lead to financial fraud.",
+    cwe: "CWE-200",
+  },
+  {
+    name: "Slack Bot Token",
+    regex: /xoxb-[0-9]{11,}-[0-9]{11,}-[a-zA-Z0-9]{24}/,
+    recommendation:
+      "Slack workspace tokens were found. Attackers could read private company messages.",
+    cwe: "CWE-200",
+  },
+  {
+    name: "Atlassian (Jira/Confluence) API Token",
+    regex: /(?<![A-Za-z0-9])[a-zA-Z0-9]{24}(?![A-Za-z0-9])/, // Note: Atlassian tokens are 24-char alphanumeric. This is a generic high-entropy matcher.
+    recommendation:
+      "Potential Atlassian API tokens detected. Ensure Jira/Confluence secrets are redacted.",
+    cwe: "CWE-200",
+  },
+  {
     name: "Credit Card (Basic format detection)",
     // Extremely basic matcher for 16-digit cards to avoid high false positives in test IDs
     regex: /\b(?:\d[ -]*?){13,16}\b/,
