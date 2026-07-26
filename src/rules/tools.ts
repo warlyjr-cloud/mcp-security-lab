@@ -154,5 +154,21 @@ export function inspectTool(tool: ToolMetadata): Finding[] {
     });
   }
 
+  const paginationKeys = new Set(["limit", "offset", "cursor", "max_results", "page"]);
+  const hasPagination = Object.keys(properties).some((key) =>
+    paginationKeys.has(key.toLowerCase()),
+  );
+
+  if (!hasPagination && READ_NAME_PATTERN.test(tool.name)) {
+    findings.push({
+      id: "TOOL010",
+      severity: "medium",
+      title: "Context Exhaustion Risk: Missing pagination limits",
+      evidence: "Tool name implies reading, but inputSchema lacks limit, cursor, or offset fields.",
+      recommendation: "Implement pagination limits to prevent context window exhaustion attacks.",
+      location,
+    });
+  }
+
   return findings;
 }

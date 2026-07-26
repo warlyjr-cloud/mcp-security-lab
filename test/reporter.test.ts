@@ -19,6 +19,7 @@ const report: ScanReport = {
     requested: true,
     connected: true,
     toolsInvoked: 0,
+    transport: "stdio",
     environmentMode: "allowlist",
     osSandboxed: false,
     limitations: [],

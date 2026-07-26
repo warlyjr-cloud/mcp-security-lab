@@ -68,15 +68,22 @@ export async function loadConfig(configPath: string): Promise<ScanConfig> {
   assertRecord(parsed, "Config");
   assertRecord(parsed.target, "target");
 
-  const { command, args = [], cwd = ".", env = {} } = parsed.target;
-  if (typeof command !== "string" || command.trim() === "") {
-    throw new Error("target.command must be a non-empty string.");
+  const { command, args = [], cwd = ".", env = {}, url } = parsed.target;
+
+  if (url !== undefined && typeof url !== "string") {
+    throw new Error("target.url must be a string if provided.");
   }
-  if (!Array.isArray(args) || args.some((arg) => typeof arg !== "string")) {
-    throw new Error("target.args must be an array of strings.");
-  }
-  if (typeof cwd !== "string" || cwd.trim() === "") {
-    throw new Error("target.cwd must be a non-empty string.");
+
+  if (url === undefined) {
+    if (typeof command !== "string" || command.trim() === "") {
+      throw new Error("target.command must be a non-empty string when url is not provided.");
+    }
+    if (!Array.isArray(args) || args.some((arg) => typeof arg !== "string")) {
+      throw new Error("target.args must be an array of strings.");
+    }
+    if (typeof cwd !== "string" || cwd.trim() === "") {
+      throw new Error("target.cwd must be a non-empty string.");
+    }
   }
 
   const policyValue = parsed.policy ?? {};
@@ -84,9 +91,13 @@ export async function loadConfig(configPath: string): Promise<ScanConfig> {
 
   return {
     target: {
-      command,
-      args: [...args],
-      cwd: resolve(dirname(absoluteConfigPath), cwd),
+      ...(url !== undefined
+        ? { url: url as string }
+        : {
+            command: command as string,
+            args: [...(args as string[])],
+            cwd: resolve(dirname(absoluteConfigPath), cwd as string),
+          }),
       env: readTargetEnvironment(env),
     },
     policy: {

@@ -10,10 +10,11 @@ export interface Finding {
 }
 
 export interface TargetConfig {
-  command: string;
-  args: string[];
-  cwd: string;
+  command?: string;
+  args?: string[];
+  cwd?: string;
   env?: Record<string, string>;
+  url?: string;
 }
 
 export interface ScanPolicy {
@@ -47,16 +48,18 @@ export interface ScanReport {
     version: string;
   };
   target: {
-    command: string;
-    args: string[];
-    cwd: string;
+    command?: string;
+    args?: string[];
+    cwd?: string;
+    url?: string;
   };
   execution: {
     requested: boolean;
     connected: boolean;
     toolsInvoked: 0;
-    environmentMode: "allowlist";
-    osSandboxed: false;
+    transport: "stdio" | "sse";
+    environmentMode: "allowlist" | "none";
+    osSandboxed: boolean;
     limitations: string[];
   };
   server?: ServerMetadata;
