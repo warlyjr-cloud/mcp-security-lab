@@ -15,8 +15,8 @@ export function renderDashboard(report: ScanReport): void {
     content: "{center}{bold}MCP Security Lab - Live Audit Dashboard{/bold}{/center}",
     tags: true,
     style: {
-      fg: "white",
-      bg: "blue",
+      fg: "green",
+      bg: "black",
     },
   });
 
@@ -44,7 +44,9 @@ export function renderDashboard(report: ScanReport): void {
       type: "line",
     },
     style: {
-      border: { fg: "cyan" },
+      fg: "green",
+      bg: "black",
+      border: { fg: "green" },
     },
   });
 
@@ -68,7 +70,9 @@ export function renderDashboard(report: ScanReport): void {
       type: "line",
     },
     style: {
-      border: { fg: "cyan" },
+      fg: "green",
+      bg: "black",
+      border: { fg: "green" },
     },
   });
 
@@ -85,8 +89,10 @@ export function renderDashboard(report: ScanReport): void {
       type: "line",
     },
     style: {
-      border: { fg: "cyan" },
-      selected: { bg: "magenta", fg: "white" },
+      fg: "green",
+      bg: "black",
+      border: { fg: "green" },
+      selected: { bg: "green", fg: "black" },
     },
     items:
       report.findings.length > 0
@@ -102,7 +108,7 @@ export function renderDashboard(report: ScanReport): void {
     content: "{center}Press Q, Escape, or Ctrl+C to quit.{/center}",
     tags: true,
     style: {
-      fg: "white",
+      fg: "green",
       bg: "black",
     },
   });
