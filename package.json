@@ -15,8 +15,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test dist/test/**/*.test.js",
-    "test:coverage": "npm run build && c8 node --test dist/test/**/*.test.js",
+    "test": "npm run build && node --test dist/test/action-manifest.test.js dist/test/e2e.test.js dist/test/reporter.test.js dist/test/rules.test.js",
+    "test:coverage": "npm run build && c8 node --test dist/test/action-manifest.test.js dist/test/e2e.test.js dist/test/reporter.test.js dist/test/rules.test.js",
     "lint": "eslint \"src/**/*.ts\"",
     "format": "prettier --write .",
     "scan:fixture": "npm run build && node dist/src/cli.js scan --config examples/insecure-server.json --execute",
