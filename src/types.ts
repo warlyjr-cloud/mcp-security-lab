@@ -29,6 +29,7 @@ export interface TargetConfig {
 export interface ScanPolicy {
   timeoutMs: number;
   maxTools: number;
+  aiFuzz?: boolean;
 }
 
 export interface ScanConfig {

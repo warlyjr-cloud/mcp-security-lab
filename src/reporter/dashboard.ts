@@ -1,0 +1,125 @@
+import blessed from "blessed";
+import type { ScanReport } from "../types.js";
+
+export function renderDashboard(report: ScanReport): void {
+  const screen = blessed.screen({
+    smartCSR: true,
+    title: "MCP Security Lab - Dashboard",
+  });
+
+  const header = blessed.box({
+    top: 0,
+    left: "center",
+    width: "100%",
+    height: 3,
+    content: "{center}{bold}MCP Security Lab - Live Audit Dashboard{/bold}{/center}",
+    tags: true,
+    style: {
+      fg: "white",
+      bg: "blue",
+    },
+  });
+
+  const targetLabel =
+    report.target.url !== undefined
+      ? report.target.url
+      : `${report.target.command} ${(report.target.args ?? []).join(" ")}`.trim();
+
+  const summaryText = [
+    `Target: ${targetLabel}`,
+    `Status: ${report.execution.connected ? "{green-fg}Connected{/green-fg}" : "{red-fg}Disconnected{/red-fg}"}`,
+    `Tools Invoked: ${report.execution.toolsInvoked}`,
+    `OS Sandbox: ${report.execution.osSandboxed ? "{green-fg}Enabled{/green-fg}" : "{red-fg}Disabled{/red-fg}"}`,
+  ].join("\n");
+
+  const summaryBox = blessed.box({
+    top: 3,
+    left: 0,
+    width: "40%",
+    height: 8,
+    label: " Target Info ",
+    content: summaryText,
+    tags: true,
+    border: {
+      type: "line",
+    },
+    style: {
+      border: { fg: "cyan" },
+    },
+  });
+
+  const scoreText = [
+    `{red-fg}Critical: ${report.summary.critical}{/red-fg}`,
+    `{magenta-fg}High:     ${report.summary.high}{/magenta-fg}`,
+    `{yellow-fg}Medium:   ${report.summary.medium}{/yellow-fg}`,
+    `{blue-fg}Low:      ${report.summary.low}{/blue-fg}`,
+    `{white-fg}Info:     ${report.summary.info}{/white-fg}`,
+  ].join("\n");
+
+  const scoreBox = blessed.box({
+    top: 3,
+    left: "40%",
+    width: "60%",
+    height: 8,
+    label: " Vulnerability Scorecard ",
+    content: scoreText,
+    tags: true,
+    border: {
+      type: "line",
+    },
+    style: {
+      border: { fg: "cyan" },
+    },
+  });
+
+  const findingsList = blessed.list({
+    top: 11,
+    left: 0,
+    width: "100%",
+    height: "100%-14",
+    label: " Findings (Use Up/Down Arrows) ",
+    keys: true,
+    vi: true,
+    mouse: true,
+    border: {
+      type: "line",
+    },
+    style: {
+      border: { fg: "cyan" },
+      selected: { bg: "magenta", fg: "white" },
+    },
+    items:
+      report.findings.length > 0
+        ? report.findings.map((f) => `[${f.severity.toUpperCase()}] ${f.id}: ${f.title}`)
+        : ["No findings detected."],
+  });
+
+  const footer = blessed.box({
+    bottom: 0,
+    left: 0,
+    width: "100%",
+    height: 3,
+    content: "{center}Press Q, Escape, or Ctrl+C to quit.{/center}",
+    tags: true,
+    style: {
+      fg: "white",
+      bg: "black",
+    },
+  });
+
+  screen.append(header);
+  screen.append(summaryBox);
+  screen.append(scoreBox);
+  screen.append(findingsList);
+  screen.append(footer);
+
+  // Focus the list so the user can scroll
+  findingsList.focus();
+
+  // Quit on Escape, q, or Control-C.
+  screen.key(["escape", "q", "C-c"], () => {
+    return process.exit(0);
+  });
+
+  screen.render();
+}
