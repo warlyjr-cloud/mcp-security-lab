@@ -53,13 +53,61 @@ export function createSanitizedEnvironment(
   return environment;
 }
 
-const SENSITIVE_QUERY_KEY_PATTERN =
-  /^(api[-_]?key|access[-_]?token|auth|authorization|credential|key|password|secret|token)$/i;
+function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/[-_]/g, "");
+}
+
+// Compound names that are unambiguously credentials. Matched as substrings so
+// client_secret, refresh_token, id_token, X-Amz-Security-Token, X-Amz-Signature,
+// api_key, etc. are all caught.
+const CREDENTIAL_NEEDLES = [
+  "secret",
+  "password",
+  "passwd",
+  "credential",
+  "signature",
+  "apikey",
+  "accesskey",
+  "privatekey",
+  "accesstoken",
+  "refreshtoken",
+  "idtoken",
+  "securitytoken",
+  "sessiontoken",
+  "bearer",
+];
+
+// Additional bare keys redacted from reports (over-redaction is safe there) but
+// NOT treated as findings, since a bare ?token=/?key= is often an opaque cursor.
+const BROAD_REDACTION_KEYS = new Set(["token", "key", "auth", "authorization", "sig", "pwd"]);
+
+/** Strong, low-false-positive test used to RAISE a credentials-in-URL finding. */
+export function isCredentialQueryKey(key: string): boolean {
+  const normalized = normalizeKey(key);
+  return CREDENTIAL_NEEDLES.some((needle) => normalized.includes(needle));
+}
+
+/** Broad test used only to REDACT report output, where over-redaction is safe. */
+function isRedactableQueryKey(key: string): boolean {
+  return isCredentialQueryKey(key) || BROAD_REDACTION_KEYS.has(normalizeKey(key));
+}
+
+function redactParams(params: URLSearchParams): boolean {
+  let changed = false;
+  for (const key of [...params.keys()]) {
+    if (isRedactableQueryKey(key)) {
+      params.set(key, "[REDACTED]");
+      changed = true;
+    }
+  }
+  return changed;
+}
 
 /**
  * Remove credentials from a URL before it enters a report: strip any userinfo
- * (`user:pass@`) and redact the value of sensitive query parameters. Falls back
- * to a coarse regex when the string is not a parseable URL.
+ * (`user:pass@`) and redact the value of sensitive query AND fragment parameters
+ * (OAuth implicit-flow tokens live in the fragment). Falls back to a coarse regex
+ * when the string is not a parseable URL.
  */
 export function redactUrl(rawUrl: string): string {
   try {
@@ -68,9 +116,11 @@ export function redactUrl(rawUrl: string): string {
       url.username = "[REDACTED]";
       url.password = "";
     }
-    for (const key of [...url.searchParams.keys()]) {
-      if (SENSITIVE_QUERY_KEY_PATTERN.test(key)) {
-        url.searchParams.set(key, "[REDACTED]");
+    redactParams(url.searchParams);
+    if (url.hash.length > 1) {
+      const fragment = new URLSearchParams(url.hash.slice(1));
+      if (redactParams(fragment)) {
+        url.hash = `#${fragment.toString()}`;
       }
     }
     // URL percent-encodes the brackets of our sentinel; restore it for readability.

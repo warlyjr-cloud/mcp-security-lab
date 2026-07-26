@@ -27,9 +27,37 @@ test("credentials in userinfo are flagged", () => {
   assert.ok(findings.some((finding) => finding.id === "REMOTE003"));
 });
 
-test("credentials in a query parameter are flagged", () => {
-  const findings = inspectRemote({ url: "https://example.com/mcp?token=abc123" });
+test("a strong credential query parameter is flagged", () => {
+  const findings = inspectRemote({ url: "https://example.com/mcp?access_token=abc123" });
   assert.ok(findings.some((finding) => finding.id === "REMOTE003"));
+});
+
+test("client_secret and refresh_token are flagged", () => {
+  assert.ok(
+    inspectRemote({ url: "https://example.com/mcp?client_secret=x" }).some(
+      (f) => f.id === "REMOTE003",
+    ),
+  );
+  assert.ok(
+    inspectRemote({ url: "https://example.com/mcp?refresh_token=x" }).some(
+      (f) => f.id === "REMOTE003",
+    ),
+  );
+});
+
+test("a credential in the URL fragment is flagged (implicit flow)", () => {
+  const findings = inspectRemote({ url: "https://example.com/mcp#access_token=abc" });
+  assert.ok(findings.some((finding) => finding.id === "REMOTE003"));
+});
+
+test("a benign opaque query parameter does not cry wolf", () => {
+  // Bare ?token= / ?key= are common opaque cursors, not necessarily credentials.
+  assert.equal(
+    inspectRemote({ url: "https://example.com/mcp?token=next-page-cursor" }).some(
+      (f) => f.id === "REMOTE003",
+    ),
+    false,
+  );
 });
 
 test("a malformed URL is reported", () => {
@@ -42,6 +70,23 @@ test("redactUrl strips userinfo and sensitive query values", () => {
     redactUrl("https://user:secret@example.com/mcp?token=abc&page=2"),
     "https://[REDACTED]@example.com/mcp?token=[REDACTED]&page=2",
   );
+});
+
+test("redactUrl redacts compound credential parameters and fragment tokens", () => {
+  const redacted = redactUrl(
+    "https://example.com/mcp?client_secret=SECRET&refresh_token=RT&page=2#access_token=IMPLICIT",
+  );
+  assert.equal(redacted.includes("SECRET"), false);
+  assert.equal(redacted.includes("RT"), false);
+  assert.equal(redacted.includes("IMPLICIT"), false);
+  assert.ok(redacted.includes("page=2"));
+});
+
+test("redactUrl falls back to coarse redaction for an unparseable URL", () => {
+  // A space in the host makes new URL() throw, exercising the catch branch.
+  const redacted = redactUrl("https://user:hunter2@exa mple.com/mcp");
+  assert.equal(redacted.includes("hunter2"), false);
+  assert.ok(redacted.includes("[REDACTED]"));
 });
 
 test("a remote scan redacts the URL and reports the http transport", async () => {

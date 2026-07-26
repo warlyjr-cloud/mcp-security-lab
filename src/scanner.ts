@@ -8,6 +8,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { createSanitizedEnvironment, redactArguments, redactUrl } from "./environment.js";
 import { scanTextForInjection } from "./rules/injection.js";
 import { inspectLaunch } from "./rules/launch.js";
+import { inspectRemoteAuth } from "./rules/oauth.js";
 import { inspectRemote, unauthenticatedAccessFinding } from "./rules/remote.js";
 import {
   inspectServerCapabilities,
@@ -410,10 +411,33 @@ export async function scan(
       location: "execution",
     });
   } else {
-    const discovery = await discover(config, sandbox, fuzz);
-    server = discovery.server;
-    toolsInvoked = discovery.toolsInvoked;
-    findings.push(...discovery.findings);
+    if (config.target.url !== undefined) {
+      findings.push(...(await inspectRemoteAuth(config.target.url, config.policy.timeoutMs)));
+    }
+    try {
+      const discovery = await discover(config, sandbox, fuzz);
+      server = discovery.server;
+      toolsInvoked = discovery.toolsInvoked;
+      findings.push(...discovery.findings);
+    } catch (error: unknown) {
+      // A stdio target that fails to start is a real error. A remote target
+      // that refuses an unauthenticated handshake (e.g. it requires OAuth) is an
+      // expected outcome captured by the auth findings, not a scanner failure.
+      if (config.target.url === undefined) {
+        throw error;
+      }
+      findings.push({
+        id: "EXEC002",
+        severity: "info",
+        title: "Remote server did not complete an unauthenticated handshake",
+        evidence: `The MCP handshake did not succeed without credentials: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        recommendation:
+          "Provide credentials to scan the authenticated tool surface, or review the OAuth findings above.",
+        location: "execution",
+      });
+    }
   }
 
   findings.sort((left, right) => {
