@@ -1,0 +1,21 @@
+{
+  "$schema": "https://mcp-security-lab.github.io/schemas/firewall-v1.json",
+  "version": "1.0",
+  "generatedBy": "MCP Security Lab",
+  "target": "node",
+  "rules": {
+    "defaultAction": "allow",
+    "rateLimit": {
+      "enabled": true,
+      "maxRequestsPerMinute": 60
+    },
+    "tools": {
+      "deny": [],
+      "allow": ["*"]
+    }
+  },
+  "threatContext": {
+    "criticalFindings": 0,
+    "highFindings": 0
+  }
+}
