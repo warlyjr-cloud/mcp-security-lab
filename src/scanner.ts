@@ -1,4 +1,5 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 import { createSanitizedEnvironment, redactArguments } from "./environment.js";
@@ -49,15 +50,41 @@ function withTimeout<T>(operation: Promise<T>, timeoutMs: number, label: string)
 
 async function discover(
   config: ScanConfig,
+  sandbox: "docker" | "none",
 ): Promise<{ server: ServerMetadata; findings: Finding[] }> {
-  const client = new Client({ name: "mcp-security-lab", version: VERSION });
-  const transport = new StdioClientTransport({
-    command: config.target.command,
-    args: config.target.args,
-    cwd: config.target.cwd,
-    env: { ...(config.target.env ?? {}), ...createSanitizedEnvironment() },
-    stderr: "pipe",
-  });
+  const client = new Client({ name: "mcp-security-lab", version: VERSION }, { capabilities: {} });
+  const isSse = config.target.url !== undefined;
+
+  let stdioCommand = config.target.command as string;
+  let stdioArgs = config.target.args as string[];
+
+  if (!isSse && sandbox === "docker") {
+    stdioCommand = "docker";
+    stdioArgs = [
+      "run",
+      "-i",
+      "--rm",
+      "--network",
+      "none",
+      "-v",
+      `${config.target.cwd}:/workspace`,
+      "-w",
+      "/workspace",
+      "node:22-alpine", // Default image, could be configurable in the future
+      config.target.command as string,
+      ...(config.target.args as string[]),
+    ];
+  }
+
+  const transport = isSse
+    ? new SSEClientTransport(new URL(config.target.url as string))
+    : new StdioClientTransport({
+        command: stdioCommand,
+        args: stdioArgs,
+        cwd: config.target.cwd as string,
+        env: { ...(config.target.env ?? {}), ...createSanitizedEnvironment() },
+        stderr: "pipe",
+      });
 
   try {
     await withTimeout(client.connect(transport), config.policy.timeoutMs, "MCP initialization");
@@ -97,7 +124,11 @@ async function discover(
   }
 }
 
-export async function scan(config: ScanConfig, execute: boolean): Promise<ScanReport> {
+export async function scan(
+  config: ScanConfig,
+  execute: boolean,
+  sandbox: "docker" | "none" = "none",
+): Promise<ScanReport> {
   const findings = inspectLaunch(config.target);
   let server: ServerMetadata | undefined;
 
@@ -111,7 +142,7 @@ export async function scan(config: ScanConfig, execute: boolean): Promise<ScanRe
       location: "execution",
     });
   } else {
-    const discovery = await discover(config);
+    const discovery = await discover(config, sandbox);
     server = discovery.server;
     findings.push(...discovery.findings);
   }
@@ -131,17 +162,21 @@ export async function scan(config: ScanConfig, execute: boolean): Promise<ScanRe
       name: "mcp-security-lab",
       version: VERSION,
     },
-    target: {
-      command: config.target.command,
-      args: redactArguments(config.target.args),
-      cwd: config.target.cwd,
-    },
+    target:
+      config.target.url !== undefined
+        ? { url: config.target.url }
+        : {
+            command: config.target.command as string,
+            args: redactArguments(config.target.args as string[]),
+            cwd: config.target.cwd as string,
+          },
     execution: {
       requested: execute,
       connected: server !== undefined,
       toolsInvoked: 0,
-      environmentMode: "allowlist",
-      osSandboxed: false,
+      transport: config.target.url !== undefined ? "sse" : "stdio",
+      environmentMode: config.target.url !== undefined ? "none" : "allowlist",
+      osSandboxed: sandbox === "docker",
       limitations: [
         "The target process is not isolated from the host filesystem or network.",
         "The scanner inspects advertised tool metadata but does not invoke tools.",

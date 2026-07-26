@@ -27,6 +27,10 @@ const SUSPICIOUS_ARGUMENTS: Array<{ pattern: RegExp; label: string }> = [
 
 export function inspectLaunch(target: TargetConfig): Finding[] {
   const findings: Finding[] = [];
+  if (target.command === undefined || target.args === undefined) {
+    return findings;
+  }
+
   const executable = basename(target.command).toLowerCase();
   const joinedArguments = target.args.join(" ");
 

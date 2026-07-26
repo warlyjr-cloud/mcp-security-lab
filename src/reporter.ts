@@ -150,10 +150,15 @@ export function reportAsSarif(
 }
 
 export function reportAsText(report: ScanReport): string {
+  const targetLabel =
+    report.target.url !== undefined
+      ? report.target.url
+      : `${report.target.command} ${(report.target.args ?? []).join(" ")}`.trim();
+
   const lines = [
     "MCP Security Lab",
-    `Target: ${report.target.command} ${report.target.args.join(" ")}`.trim(),
-    `Connected: ${report.execution.connected ? "yes" : "no"} | Tools invoked: 0 | OS sandbox: no`,
+    `Target: ${targetLabel}`,
+    `Connected: ${report.execution.connected ? "yes" : "no"} | Transport: ${report.execution.transport} | Tools invoked: 0 | OS sandbox: no`,
     `Findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`,
     "",
   ];

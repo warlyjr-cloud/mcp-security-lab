@@ -12,6 +12,7 @@ interface CliOptions {
   execute: boolean;
   format: "text" | "json" | "sarif";
   outputPath?: string;
+  sandbox: "docker" | "none";
 }
 
 function usage(): string {
@@ -22,6 +23,7 @@ function usage(): string {
     "Safety:",
     "  Without --execute, only the launch configuration is inspected.",
     "  With --execute, the target starts with a filtered environment; its tools are never called.",
+    "  Use --sandbox docker to run the target inside a disposable Docker container.",
   ].join("\n");
 }
 
@@ -34,6 +36,7 @@ function parseArgs(args: string[]): CliOptions {
   let execute = false;
   let format: "text" | "json" | "sarif" = "text";
   let outputPath: string | undefined;
+  let sandbox: "docker" | "none" = "none";
 
   for (let index = 1; index < args.length; index += 1) {
     const argument = args[index];
@@ -41,7 +44,12 @@ function parseArgs(args: string[]): CliOptions {
       execute = true;
       continue;
     }
-    if (argument === "--config" || argument === "--format" || argument === "--output") {
+    if (
+      argument === "--config" ||
+      argument === "--format" ||
+      argument === "--output" ||
+      argument === "--sandbox"
+    ) {
       const value = args[index + 1];
       if (value === undefined) {
         throw new Error(`${argument} requires a value.`);
@@ -51,6 +59,12 @@ function parseArgs(args: string[]): CliOptions {
         configPath = value;
       } else if (argument === "--output") {
         outputPath = value;
+      } else if (argument === "--sandbox") {
+        if (value === "docker" || value === "none") {
+          sandbox = value;
+        } else {
+          throw new Error("--sandbox must be docker or none.");
+        }
       } else if (value === "text" || value === "json" || value === "sarif") {
         format = value;
       } else {
@@ -69,6 +83,7 @@ function parseArgs(args: string[]): CliOptions {
     configPath,
     execute,
     format,
+    sandbox,
     ...(outputPath === undefined ? {} : { outputPath }),
   };
 }
@@ -76,7 +91,7 @@ function parseArgs(args: string[]): CliOptions {
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const config = await loadConfig(options.configPath);
-  const report = await scan(config, options.execute);
+  const report = await scan(config, options.execute, options.sandbox);
   const output =
     options.format === "json"
       ? reportAsJson(report)
