@@ -1,7 +1,7 @@
 {
-  "name": "mcp-security-lab",
+  "name": "cyberconsult-advanced-security-suite",
   "version": "1.0.0",
-  "description": "Evidence-first security checks for local and remote MCP servers.",
+  "description": "CyberConsult Advanced Security Suite (MCP Verifier): evidence-first security checks for local and remote MCP servers.",
   "type": "module",
   "bin": {
     "mcpsl": "./dist/src/cli.js"
@@ -62,7 +62,9 @@
     "security",
     "model-context-protocol",
     "prompt-injection",
-    "cli"
+    "cli",
+    "cyberconsult",
+    "mcp-verifier"
   ],
   "license": "Apache-2.0",
   "dependencies": {

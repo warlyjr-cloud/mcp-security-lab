@@ -1,12 +1,21 @@
-# MCP Security Lab
+# CyberConsult Advanced Security Suite
 
 [![CI](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml)
 [![npm version](https://badge.fury.io/js/mcp-security-lab.svg)](https://badge.fury.io/js/mcp-security-lab)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Evidence-first security checks for local and remote Model Context Protocol (MCP) servers.
+**CyberConsult Advanced Security Suite** (formerly MCP Security Lab) is an evidence-first
+security toolkit for local and remote Model Context Protocol (MCP) servers. Its core engine,
+**MCP Verifier**, audits how an MCP server is launched and what it advertises during the MCP
+handshake — without requiring an LLM or API key for its deterministic checks.
 
-> **MCP Security Lab is a DevSecOps DevTool that automatically audits Model Context Protocol (MCP) servers for prompt injections, context window exhaustion, and unsafe tool schemas without requiring an LLM or API keys. It runs natively in CI/CD pipelines (SARIF 2.1.0) and supports Docker Sandboxing for safe active probing.**
+> The GitHub repository, npm package, and CLI binary keep their existing identifiers
+> (`mcp-security-lab`, `mcpsl`) during this rebrand so existing installs, CI pipelines, and the
+> GitHub Action referenced below keep working without changes. "CyberConsult Advanced Security
+> Suite" and "MCP Verifier" are the product's new brand names layered on top of that unchanged
+> technical foundation.
+
+> **MCP Verifier automatically audits Model Context Protocol (MCP) servers for prompt injections, context window exhaustion, and unsafe tool schemas without requiring an LLM or API keys. It runs natively in CI/CD pipelines (SARIF 2.1.0) and supports Docker Sandboxing for safe active probing.**
 
 The MVP audits how a local or remote MCP server is launched and what it advertises during the MCP
 handshake. It detects risky launcher patterns (including inline code execution and encoded payloads),
@@ -17,16 +26,49 @@ parameter names, enum values, server instructions, and every advertised **prompt
 and is resilient to Unicode evasion (homoglyphs, zero-width and bidirectional characters).
 
 Every finding is mapped to a **CWE** and, where relevant, to the **OWASP Top 10 for LLM Applications**,
-and this taxonomy is emitted in the SARIF output. By default the scanner does not call discovered
+and this taxonomy is emitted in the SARIF output. By default MCP Verifier does not call discovered
 tools and requires no LLM or API key. Reports can be emitted as text, JSON, or SARIF 2.1.0. The full
 rule catalog is documented in [docs/RULES.md](docs/RULES.md); the trust boundaries are described in
 [THREAT_MODEL.md](THREAT_MODEL.md).
+
+## Market differentiation
+
+Most MCP tooling either (a) trusts server metadata at face value, or (b) requires an LLM/API key
+to reason about risk, adding cost, latency, and a non-deterministic verdict to a security gate.
+CyberConsult Advanced Security Suite is positioned differently:
+
+- **Deterministic by default.** MCP Verifier's core rule set (launcher patterns, tool annotations,
+  schema hygiene, prompt-injection text matching, context-exhaustion heuristics) runs with no LLM
+  and no API key, so results are reproducible and safe to gate CI/CD on.
+- **Evidence-first reporting.** Every finding carries the matched evidence, a CWE mapping, and,
+  where applicable, an OWASP Top 10 for LLM Applications category — not just a severity label.
+- **Optional AI escalation, not a dependency.** The Anthropic-powered features (`--auto-fix`
+  remediation, the in-TUI Security Consultant chat) are opt-in additions on top of the
+  deterministic engine, not a requirement to get a baseline audit.
+- **CI-native output.** SARIF 2.1.0 output integrates directly with GitHub code scanning; a
+  composite GitHub Action ships in-repo (see below).
+- **Safety-conscious active probing.** Optional fuzzing (`--fuzz`) only runs inside a
+  network-isolated Docker sandbox, never against a live/trusted server on the host.
+
+## CyberConsult and the Claude for OSS Incubator
+
+This project has architected its AI-assisted features — automated remediation suggestions and an
+interactive Security Consultant — directly on top of Anthropic's Claude and the Model Context
+Protocol, and treats MCP server auditing as a concrete, real-world case study of an AI system
+acting as a security architect. On that basis, CyberConsult Advanced Security Suite considers
+itself a strong **candidate** for the Claude for OSS Incubator: an open-source project built from
+the ground up to demonstrate what Claude and MCP can do to strengthen security practices across
+the open-source community.
+
+To be clear: this project has **not** been accepted into, and is not officially affiliated with,
+the Claude for OSS Incubator or Anthropic. The above describes the project's alignment and
+aspirations, not a confirmed relationship.
 
 ## Why this exists
 
 Installing a local MCP server executes code with the user's privileges. Protocol compliance
 alone does not show whether a server asks for excessive access or advertises unsafe tools.
-MCP Security Lab produces a small, reviewable report before deeper testing.
+MCP Verifier produces a small, reviewable report before deeper testing.
 
 ## Quick start
 

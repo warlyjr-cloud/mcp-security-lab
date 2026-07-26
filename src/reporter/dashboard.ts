@@ -5,7 +5,7 @@ import { openChatModal } from "./chat.js";
 export function renderDashboard(report: ScanReport): void {
   const screen = blessed.screen({
     smartCSR: true,
-    title: "MCP Security Lab - Dashboard",
+    title: "CyberConsult Advanced Security Suite - MCP Verifier Dashboard",
   });
 
   const header = blessed.box({
@@ -13,7 +13,8 @@ export function renderDashboard(report: ScanReport): void {
     left: "center",
     width: "100%",
     height: 3,
-    content: "{center}{bold}MCP Security Lab - Live Audit Dashboard{/bold}{/center}",
+    content:
+      "{center}{bold}CyberConsult Advanced Security Suite — MCP Verifier Live Audit Dashboard{/bold}{/center}",
     tags: true,
     style: {
       fg: "green",
