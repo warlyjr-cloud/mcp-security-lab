@@ -1,8 +1,8 @@
 # Threat model
 
-This document states what MCP Security Lab treats as trusted, what it treats as hostile, and what
-it does and does not guarantee. It complements [SECURITY.md](SECURITY.md), which covers vulnerability
-reporting.
+This document states what CyberConsult Advanced Security Suite (MCP Verifier) treats as trusted,
+what it treats as hostile, and what it does and does not guarantee. It complements
+[SECURITY.md](SECURITY.md), which covers vulnerability reporting.
 
 ## Assets we protect
 
@@ -45,7 +45,15 @@ crash the scanner, exfiltrate the operator's environment, or inject content into
 - **Secret leakage into reports.** Credentials passed as arguments or in URLs are redacted; only an
   allowlist of environment variables is inherited by the target.
 - **Uncontrolled active probing.** `--fuzz` executes tool code, so it requires an OS-level sandbox
-  (`--sandbox docker`, `--network none`) and refuses to run on the host.
+  (`--sandbox docker`, `--network none`) and refuses to run on the host. Once sandboxed, malformed
+  and injection-shaped arguments are sent to each tool: a tool that hangs or crashes the server
+  process is flagged (`FUZZ001`) instead of silently accepted, and a tool that blindly fetches
+  cloud-metadata or internal-network addresses on the fuzzer's behalf is flagged as a possible
+  SSRF / data-exfiltration path (`FUZZ002`).
+- **Sensitive data leakage via tool responses.** A tool response returned during fuzzing may
+  contain AWS/GCP/NVIDIA/OpenAI/Stripe/Slack/Atlassian credentials or credit-card-shaped data that
+  the target server should never have echoed back. Responses are pattern-matched for these
+  signatures and flagged (`DATA001`) rather than silently forwarded.
 
 ## Explicit non-goals
 

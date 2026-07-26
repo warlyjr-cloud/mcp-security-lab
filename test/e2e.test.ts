@@ -83,6 +83,28 @@ test("fuzzing without an OS sandbox is rejected", async () => {
   );
 });
 
+test("a docker-sandboxed scan builds the container launch args and fails cleanly without a daemon", async () => {
+  // This does not require a working Docker daemon: it only asserts that the
+  // scan attempts (and fails to connect through) a Docker-wrapped launch,
+  // exercising the container argument construction without depending on the
+  // outcome of an actual `docker run`.
+  await assert.rejects(
+    scan(
+      {
+        target: {
+          command: process.execPath,
+          args: [resolve("dist/fixtures/insecure-server.js")],
+          cwd: process.cwd(),
+        },
+        policy: { timeoutMs: 5_000, maxTools: 10 },
+      },
+      true,
+      "docker",
+      false,
+    ),
+  );
+});
+
 test("scanner report never exposes sensitive launcher arguments", async () => {
   const report = await scan(
     {

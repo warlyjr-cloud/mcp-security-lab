@@ -179,7 +179,7 @@ export function reportAsText(report: ScanReport): string {
       : `${report.target.command} ${(report.target.args ?? []).join(" ")}`.trim();
 
   const lines = [
-    "MCP Security Lab",
+    "CyberConsult Advanced Security Suite — MCP Verifier",
     `Target: ${targetLabel}`,
     `Connected: ${report.execution.connected ? "yes" : "no"} | Transport: ${report.execution.transport} | Tools invoked: ${report.execution.toolsInvoked} | OS sandbox: ${report.execution.osSandboxed ? "yes" : "no"}`,
     `Findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`,
@@ -230,10 +230,10 @@ export function reportAsMarkdown(report: ScanReport): string {
     color = "yellow";
   }
 
-  const badgeUrl = `https://img.shields.io/badge/MCP_Security_Lab-Grade_${grade}-${color}?style=for-the-badge`;
+  const badgeUrl = `https://img.shields.io/badge/MCP_Verifier-Grade_${grade}-${color}?style=for-the-badge`;
 
   const lines = [
-    `# MCP Security Lab Report`,
+    `# CyberConsult Advanced Security Suite — MCP Verifier Report`,
     ``,
     `![Security Grade](${badgeUrl})`,
     ``,
