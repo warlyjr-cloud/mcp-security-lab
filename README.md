@@ -4,12 +4,14 @@
 [![npm version](https://badge.fury.io/js/mcp-security-lab.svg)](https://badge.fury.io/js/mcp-security-lab)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Evidence-first security checks for local Model Context Protocol servers.
+Evidence-first security checks for local and remote Model Context Protocol (MCP) servers.
 
-The MVP audits how a local MCP server is launched and what it advertises during the MCP
+> **MCP Security Lab is a DevSecOps DevTool that automatically audits Model Context Protocol (MCP) servers for prompt injections, context window exhaustion, and unsafe tool schemas without requiring an LLM or API keys. It runs natively in CI/CD pipelines (SARIF 2.1.0) and supports Docker Sandboxing for safe active probing.**
+
+The MVP audits how a local or remote MCP server is launched and what it advertises during the MCP
 handshake. It detects risky launcher patterns, missing tool annotations, mixed read/write
-interfaces, overly broad schemas, and prompt-injection-like tool descriptions. It does not
-call discovered tools and does not require an LLM or API key. Reports can be emitted as text,
+interfaces, overly broad schemas, context exhaustion risks, and prompt-injection-like tool descriptions.
+It does not call discovered tools and does not require an LLM or API key. Reports can be emitted as text,
 JSON, or SARIF 2.1.0.
 
 ## Why this exists
