@@ -1,7 +1,7 @@
 {
   "name": "mcp-security-lab",
   "version": "0.2.0",
-  "description": "Evidence-first security checks for local MCP servers.",
+  "description": "Evidence-first security checks for local and remote MCP servers.",
   "type": "module",
   "bin": {
     "mcpsl": "./dist/src/cli.js"
@@ -10,6 +10,8 @@
     "dist/src",
     "README.md",
     "SECURITY.md",
+    "THREAT_MODEL.md",
+    "docs/RULES.md",
     "LICENSE"
   ],
   "scripts": {
