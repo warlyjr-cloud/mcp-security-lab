@@ -30,15 +30,63 @@ MCP Security Lab produces a small, reviewable report before deeper testing.
 
 ## Quick start
 
-```powershell
-npm.cmd install
-npm.cmd run build
-node dist/src/cli.js scan --config examples/insecure-server.json
+Run it without installing anything:
+
+```bash
+npx mcp-security-lab scan --config mcp-security-lab.json
+npx mcp-security-lab scan --config mcp-security-lab.json --execute
+```
+
+Or from a clone:
+
+```bash
+npm install
+npm run build
 node dist/src/cli.js scan --config examples/insecure-server.json --execute
 ```
 
-The first scan performs launch-configuration checks only. `--execute` acknowledges that the
+The first form performs launch-configuration checks only. `--execute` acknowledges that the
 target command will run and enables MCP discovery.
+
+## Example output
+
+Scanning the bundled intentionally-insecure fixture (`--execute`):
+
+```text
+MCP Security Lab
+Target: node dist/fixtures/insecure-server.js
+Connected: yes | Transport: stdio | Tools invoked: 0 | OS sandbox: no
+Findings: 0 critical, 7 high, 2 medium, 2 low, 0 info
+
+[HIGH] TOOL003 Text contains a prompt-injection-like instruction
+  Evidence: The description matched the instruction override pattern.
+  Recommendation: Describe functionality only; remove behavioral or hidden instructions.
+  Taxonomy: CWE-77, LLM01
+  Location: tool:delete_everything
+[HIGH] TOOL006 Potentially destructive tool is not marked destructive
+  Taxonomy: CWE-250, LLM08
+  Location: tool:delete_everything
+[HIGH] TOOL011 Dangerous Capability Combination (Least Privilege Violation)
+  Taxonomy: CWE-250, LLM08
+  Location: server
+...
+```
+
+Exit code is `2` when any high or critical finding is present, so a scan fails CI on real issues.
+
+### Against a real server
+
+Pointed at the official reference server `@modelcontextprotocol/server-everything` (13 tools, 4
+prompts, 7 resources), the scanner surfaces genuine hygiene gaps without any LLM or API key:
+
+```text
+Findings: 0 critical, 0 high, 21 medium, 13 low, 0 info
+
+  LAUNCH002 x1   Target may download executable code at startup (launched via npx)
+  TOOL010   x7   Context exhaustion risk: read tools missing pagination limits
+  TOOL004   x13  Tool annotation title is missing
+  TOOL009   x13  Input schema accepts undeclared properties
+```
 
 ## Configuration
 
