@@ -55,7 +55,7 @@ async function discover(
     command: config.target.command,
     args: config.target.args,
     cwd: config.target.cwd,
-    env: { ...createSanitizedEnvironment(), ...(config.target.env ?? {}) },
+    env: { ...(config.target.env ?? {}), ...createSanitizedEnvironment() },
     stderr: "pipe",
   });
 
