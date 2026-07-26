@@ -1,6 +1,6 @@
 {
   "name": "mcp-security-lab",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Evidence-first security checks for local and remote MCP servers.",
   "type": "module",
   "bin": {
