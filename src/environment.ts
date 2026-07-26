@@ -14,6 +14,21 @@ const SAFE_ENV_KEYS = [
   "SHELL",
 ] as const;
 
+const NON_OVERRIDABLE_ENV_KEYS = [
+  "DYLD_INSERT_LIBRARIES",
+  "DYLD_LIBRARY_PATH",
+  "LD_LIBRARY_PATH",
+  "LD_PRELOAD",
+  "MCP_SECURITY_LAB",
+  "NODE_OPTIONS",
+  "NODE_PATH",
+] as const;
+
+export const RESERVED_ENV_KEYS: ReadonlySet<string> = new Set<string>([
+  ...SAFE_ENV_KEYS,
+  ...NON_OVERRIDABLE_ENV_KEYS,
+]);
+
 const SENSITIVE_FLAG_PATTERN =
   /^--?(?:api[-_]?key|authorization|credential|password|secret|token)$/i;
 const SENSITIVE_ASSIGNMENT_PATTERN =
