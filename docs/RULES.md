@@ -43,6 +43,22 @@ Matching runs after NFKC normalization and invisible-character stripping, so hom
 zero-width, and bidirectional evasion is defeated. When one of these fires on a prompt or resource,
 its `location` is `prompt:<name>` or `resource:<name>`.
 
+## Remote transport (URL targets)
+
+Static checks (`REMOTE001`–`REMOTE003`) run without connecting; `REMOTE004` requires `--execute`.
+
+| ID          | Severity | CWE     | OWASP | Title                                                 |
+| ----------- | -------- | ------- | ----- | ----------------------------------------------------- |
+| `REMOTE001` | medium   | CWE-20  | —     | Remote target URL is malformed                        |
+| `REMOTE002` | high     | CWE-319 | LLM08 | Remote endpoint uses plaintext HTTP                   |
+| `REMOTE003` | high     | CWE-522 | LLM08 | Credentials are embedded in the target URL            |
+| `REMOTE004` | medium   | CWE-306 | LLM08 | Remote MCP server accepts unauthenticated connections |
+
+`REMOTE002` is suppressed for local hosts (`localhost`, `127.0.0.1`, `::1`, `*.localhost`), where
+plaintext HTTP is normal for development. Credentials found in the URL are redacted from the report.
+Remote targets default to the modern **Streamable HTTP** transport; set `target.transport` to `"sse"`
+for legacy servers.
+
 ## Discovery integrity (requires `--execute`)
 
 | ID        | Severity | CWE     | OWASP | Title                                          |

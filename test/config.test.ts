@@ -50,3 +50,24 @@ test("target.env rejects non-string values", async () => {
 
   await assert.rejects(loadConfig(configPath), /must be a string/);
 });
+
+test("remote target defaults to the http transport", async () => {
+  const configPath = await writeConfig({ target: { url: "https://example.com/mcp" } });
+  const config = await loadConfig(configPath);
+  assert.equal(config.target.transport, "http");
+});
+
+test("remote target accepts the sse transport", async () => {
+  const configPath = await writeConfig({
+    target: { url: "https://example.com/mcp", transport: "sse" },
+  });
+  const config = await loadConfig(configPath);
+  assert.equal(config.target.transport, "sse");
+});
+
+test("an invalid transport is rejected", async () => {
+  const configPath = await writeConfig({
+    target: { url: "https://example.com/mcp", transport: "grpc" },
+  });
+  await assert.rejects(loadConfig(configPath), /must be "http" or "sse"/);
+});

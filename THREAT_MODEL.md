@@ -37,6 +37,8 @@ crash the scanner, exfiltrate the operator's environment, or inject content into
 - **Context-exhaustion / denial of service.** Unbounded read tools, tool flooding, or oversized
   discovery payloads (`TOOL010`, `DISC001`, `DISC002`). The scanner bounds process lifetime with a
   timeout and caps the size of discovery responses so a hostile server cannot exhaust the scanner.
+- **Insecure remote transport.** Plaintext HTTP on non-local endpoints, credentials in the URL, or a
+  remote server that accepts anonymous connections (`REMOTE002`–`REMOTE004`).
 - **Secret leakage into reports.** Credentials passed as arguments or in URLs are redacted; only an
   allowlist of environment variables is inherited by the target.
 - **Uncontrolled active probing.** `--fuzz` executes tool code, so it requires an OS-level sandbox

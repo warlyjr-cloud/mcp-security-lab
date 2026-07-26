@@ -1,0 +1,10 @@
+{
+  "target": {
+    "url": "https://mcp.example.com/mcp",
+    "transport": "http"
+  },
+  "policy": {
+    "timeoutMs": 5000,
+    "maxTools": 100
+  }
+}
