@@ -34,3 +34,30 @@ jobs:
         run: npm run test:coverage
       - name: Audit production dependencies
         run: npm audit --omit=dev
+
+  dogfood:
+    name: Self-scan the synthetic fixture
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Scan the insecure fixture (must report findings)
+        run: |
+          set +e
+          node dist/src/cli.js scan --config examples/insecure-server.json --execute --format sarif --output scan.sarif
+          code=$?
+          if [ "$code" -ne 2 ]; then
+            echo "Expected exit code 2 (high/critical findings) from the vulnerable fixture, got $code." >&2
+            exit 1
+          fi
+      - name: Validate SARIF is well-formed JSON
+        run: node -e "JSON.parse(require('node:fs').readFileSync('scan.sarif','utf8'))"

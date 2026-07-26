@@ -7,6 +7,12 @@ export interface Finding {
   evidence: string;
   recommendation: string;
   location?: string;
+  /** CWE identifier, e.g. "CWE-77". */
+  cwe?: string;
+  /** OWASP Top 10 for LLM Applications identifier, e.g. "LLM01". */
+  owasp?: string;
+  /** External references (spec sections, advisories) for the finding. */
+  references?: string[];
 }
 
 export interface TargetConfig {
@@ -38,7 +44,10 @@ export interface ServerMetadata {
   name?: string;
   version?: string;
   protocolVersion?: string;
+  instructions?: string;
   toolCount: number;
+  promptCount?: number;
+  resourceCount?: number;
 }
 
 export interface ScanReport {

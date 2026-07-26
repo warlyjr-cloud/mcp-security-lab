@@ -1,0 +1,54 @@
+# Threat model
+
+This document states what MCP Security Lab treats as trusted, what it treats as hostile, and what
+it does and does not guarantee. It complements [SECURITY.md](SECURITY.md), which covers vulnerability
+reporting.
+
+## Assets we protect
+
+- The operator's workstation or CI runner (filesystem, network, credentials, environment).
+- The integrity of the scan report itself (no secret leakage, no attacker-controlled content that
+  can crash or mislead the scanner).
+
+## Trust boundaries
+
+| Component                         | Trust level | Rationale                                              |
+| --------------------------------- | ----------- | ------------------------------------------------------ |
+| The scanner code and its config   | Trusted     | Authored and reviewed by the operator.                 |
+| The target MCP server binary/args | Untrusted   | May be third-party or malicious; running it is a risk. |
+| Everything the server sends       | Untrusted   | Tool/prompt/resource metadata is attacker-controlled.  |
+| The parent process environment    | Sensitive   | Must not leak into the target or the report.           |
+
+Everything a target server returns — names, descriptions, schemas, annotations, instructions, prompt
+and resource metadata — is untrusted input and is handled defensively. A target must never be able to
+crash the scanner, exfiltrate the operator's environment, or inject content into the report.
+
+## Adversaries and the mitigations against them
+
+- **Malicious launcher (supply chain).** A config that runs a shell, a network installer
+  (`npx`/`uvx`), inline interpreter code (`node -e`, `python -c`), or encoded payloads. Detected
+  statically without execution (`LAUNCH001`–`LAUNCH004`).
+- **Prompt injection via advertised metadata.** Hidden instructions in tool descriptions, parameter
+  names, enum values, server instructions, prompts, or resources — including Unicode-obfuscated
+  variants. Detected after NFKC normalization and invisible-character stripping (`TOOL003`,
+  `TOOL012`).
+- **Excessive agency / least-privilege violations.** Undeclared destructive tools, missing safety
+  hints, read+write capability mixing (`TOOL005`–`TOOL008`, `TOOL011`).
+- **Context-exhaustion / denial of service.** Unbounded read tools, tool flooding, or oversized
+  discovery payloads (`TOOL010`, `DISC001`, `DISC002`). The scanner bounds process lifetime with a
+  timeout and caps the size of discovery responses so a hostile server cannot exhaust the scanner.
+- **Secret leakage into reports.** Credentials passed as arguments or in URLs are redacted; only an
+  allowlist of environment variables is inherited by the target.
+- **Uncontrolled active probing.** `--fuzz` executes tool code, so it requires an OS-level sandbox
+  (`--sandbox docker`, `--network none`) and refuses to run on the host.
+
+## Explicit non-goals
+
+- **No isolation without `--sandbox docker`.** A target started with `--execute` alone runs with the
+  operator's OS permissions. The scanner never claims isolation it does not enforce.
+- **No dynamic tool invocation by default.** Tools are only called when `--fuzz` is explicitly
+  requested and a sandbox is active.
+- **Not a substitute for code review.** Static launcher checks and advertised-metadata analysis
+  reduce risk; they do not prove a server is safe.
+- **No guarantee against a determined sandbox escape.** Container isolation reduces, but does not
+  eliminate, the risk of running untrusted code. Use disposable runners for unknown software.
