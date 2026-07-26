@@ -74,6 +74,20 @@ Findings: 0 critical, 7 high, 2 medium, 2 low, 0 info
 
 Exit code is `2` when any high or critical finding is present, so a scan fails CI on real issues.
 
+### Against a real server
+
+Pointed at the official reference server `@modelcontextprotocol/server-everything` (13 tools, 4
+prompts, 7 resources), the scanner surfaces genuine hygiene gaps without any LLM or API key:
+
+```text
+Findings: 0 critical, 0 high, 21 medium, 13 low, 0 info
+
+  LAUNCH002 x1   Target may download executable code at startup (launched via npx)
+  TOOL010   x7   Context exhaustion risk: read tools missing pagination limits
+  TOOL004   x13  Tool annotation title is missing
+  TOOL009   x13  Input schema accepts undeclared properties
+```
+
 ## Configuration
 
 ```json
