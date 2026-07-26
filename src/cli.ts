@@ -5,22 +5,24 @@ import { dirname, resolve } from "node:path";
 
 import { loadConfig } from "./config.js";
 import { reportAsJson, reportAsSarif, reportAsText, reportAsMarkdown } from "./reporter.js";
+import { renderDashboard } from "./reporter/dashboard.js";
 import { scan } from "./scanner.js";
 
 export interface CliOptions {
   configPath: string;
   execute: boolean;
-  format: "text" | "json" | "sarif" | "markdown";
+  format: "text" | "json" | "sarif" | "markdown" | "dashboard";
   outputPath?: string;
   sandbox: "docker" | "none";
   fuzz: boolean;
+  aiFuzz: boolean;
 }
 
 function usage(): string {
   return [
     "Usage:",
-    "  mcpsl scan --config <path> [--execute] [--sandbox docker|none] [--fuzz]",
-    "            [--format text|json|sarif|markdown] [--output <path>]",
+    "  mcpsl scan --config <path> [--execute] [--sandbox docker|none] [--fuzz] [--ai-fuzz]",
+    "            [--format text|json|sarif|markdown|dashboard] [--output <path>]",
     "",
     "Safety:",
     "  Without --execute, only the launch configuration is inspected.",
@@ -39,7 +41,8 @@ function parseArgs(args: string[]): CliOptions {
   let configPath: string | undefined;
   let execute = false;
   let fuzz = false;
-  let format: "text" | "json" | "sarif" | "markdown" = "text";
+  let aiFuzz = false;
+  let format: "text" | "json" | "sarif" | "markdown" | "dashboard" = "text";
   let outputPath: string | undefined;
   let sandbox: "docker" | "none" = "none";
 
@@ -51,6 +54,10 @@ function parseArgs(args: string[]): CliOptions {
     }
     if (argument === "--fuzz") {
       fuzz = true;
+      continue;
+    }
+    if (argument === "--ai-fuzz") {
+      aiFuzz = true;
       continue;
     }
     if (
@@ -75,10 +82,16 @@ function parseArgs(args: string[]): CliOptions {
           throw new Error("--sandbox must be docker or none.");
         }
       } else if (argument === "--format") {
-        if (value === "text" || value === "json" || value === "sarif" || value === "markdown") {
+        if (
+          value === "text" ||
+          value === "json" ||
+          value === "sarif" ||
+          value === "markdown" ||
+          value === "dashboard"
+        ) {
           format = value;
         } else {
-          throw new Error("--format must be text, json, sarif, or markdown.");
+          throw new Error("--format must be text, json, sarif, markdown, or dashboard.");
         }
       }
       continue;
@@ -94,6 +107,7 @@ function parseArgs(args: string[]): CliOptions {
     configPath,
     execute,
     fuzz,
+    aiFuzz,
     format,
     sandbox,
     ...(outputPath === undefined ? {} : { outputPath }),
@@ -103,7 +117,19 @@ function parseArgs(args: string[]): CliOptions {
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const config = await loadConfig(options.configPath);
+
+  if (options.aiFuzz) {
+    config.policy = config.policy || { maxTools: 100, timeoutMs: 5000 };
+    config.policy.aiFuzz = true;
+  }
+
   const report = await scan(config, options.execute, options.sandbox, options.fuzz);
+
+  if (options.format === "dashboard") {
+    renderDashboard(report);
+    return; // dashboard takes over the process until user quits
+  }
+
   const output =
     options.format === "json"
       ? reportAsJson(report)

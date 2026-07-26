@@ -194,6 +194,8 @@ jobs:
           execute: "true"
           upload-sarif: "true"
           fail-on-findings: "true"
+          comment-pr: "true"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 Use `execute: "false"` for launch-configuration checks that must not start the target.

@@ -22,6 +22,13 @@ inputs:
     description: Fail after SARIF upload when high or critical findings exist.
     required: false
     default: "true"
+  comment-pr:
+    description: Post the scorecard as a comment on pull requests.
+    required: false
+    default: "false"
+  github-token:
+    description: GitHub token for posting PR comments.
+    required: false
 
 outputs:
   sarif:
@@ -76,6 +83,26 @@ runs:
       with:
         sarif_file: ${{ steps.scan.outputs.sarif }}
         category: mcp-security-lab
+
+    - name: Generate Markdown Scorecard
+      if: ${{ inputs.comment-pr == 'true' }}
+      shell: bash
+      env:
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_EXECUTE: ${{ inputs.execute }}
+      run: |
+        args=(scan --config "$INPUT_CONFIG" --format markdown --output MCP_SCORECARD.md)
+        if [[ "$INPUT_EXECUTE" == "true" ]]; then
+          args+=(--execute)
+        fi
+        node "$GITHUB_ACTION_PATH/dist/src/cli.js" "${args[@]}" || true
+
+    - name: Post PR Comment
+      if: ${{ inputs.comment-pr == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: node "$GITHUB_ACTION_PATH/scripts/github-comment.js"
 
     - name: Enforce findings policy
       if: ${{ inputs.fail-on-findings == 'true' && steps.scan.outputs.policy_exit_code == '2' }}
