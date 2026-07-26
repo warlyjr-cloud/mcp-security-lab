@@ -1,5 +1,6 @@
 import blessed from "blessed";
 import type { ScanReport } from "../types.js";
+import { openChatModal } from "./chat.js";
 
 export function renderDashboard(report: ScanReport): void {
   const screen = blessed.screen({
@@ -119,12 +120,33 @@ export function renderDashboard(report: ScanReport): void {
   screen.append(findingsList);
   screen.append(footer);
 
+  // Open Chat Modal on 'c'
+  screen.key(["c"], () => {
+    const selectedIndex = (findingsList as blessed.Widgets.ListElement & { selected: number })
+      .selected;
+    if (
+      report.findings.length > 0 &&
+      selectedIndex >= 0 &&
+      selectedIndex < report.findings.length
+    ) {
+      const selectedFinding = report.findings[selectedIndex];
+      if (selectedFinding) {
+        openChatModal(screen, selectedFinding);
+      }
+    }
+  });
+
   // Focus the list so the user can scroll
   findingsList.focus();
 
   // Quit on Escape, q, or Control-C.
   screen.key(["escape", "q", "C-c"], () => {
-    return process.exit(0);
+    // If a modal is open, escape will be handled by the modal first if it has focus
+    // So this global exit won't necessarily kill the app if they are in the modal,
+    // unless the screen captures it globally. We should check if we are in the list.
+    if (screen.focused === findingsList) {
+      return process.exit(0);
+    }
   });
 
   screen.render();
