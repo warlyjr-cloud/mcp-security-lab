@@ -1,25 +1,57 @@
-# Security model
+# Security policy
 
-MCP Security Lab treats a configured MCP server as untrusted code.
+## Supported versions
 
-## What the MVP protects
+Security fixes are released for the latest minor release. Critical fixes may be backported
+when a supported deployment cannot upgrade immediately.
 
-- Dynamic scanning requires the explicit `--execute` flag.
-- The target receives a small allowlist of inherited environment variables.
-- Target startup and protocol discovery have a hard timeout.
-- The scanner lists tools but never calls them.
-- Findings are deterministic and contain no environment values.
+| Version | Support |
+| --- | --- |
+| 0.3.x | Active |
+| 0.2.x and earlier | Upgrade required |
 
-## What the MVP does not protect
+## Reporting a vulnerability
 
-The current process runner is not an OS-level sandbox. A target process still runs with the
-current user's operating-system permissions and may access the filesystem or network. Run
-unknown servers inside a disposable VM or container.
+Use a private GitHub Security Advisory in this repository. Do not open a public issue for a
+suspected vulnerability and do not include credentials, private server configurations,
+personal data, or proprietary source code.
 
-Future releases may add platform adapters for Windows Sandbox, containers, and restricted
-egress. Those adapters must be opt-in and independently verifiable.
+Include:
 
-## Reporting vulnerabilities
+- affected MCP Security Lab version and operating system;
+- minimal synthetic configuration or fixture;
+- expected and observed behavior;
+- impact and any known preconditions;
+- whether disclosure timing is sensitive.
 
-Do not include credentials, private server configuration, or personal data in a public issue.
-Provide a minimal synthetic reproduction and identify the affected version.
+Maintainers should acknowledge a report within three business days, provide an initial
+assessment within seven business days, and coordinate remediation and disclosure with the
+reporter. These are targets, not contractual service-level guarantees.
+
+## Security invariants
+
+- Discovered tools are never invoked by `scan`.
+- `exercise` invokes only an exact tool name after explicit consent and verified Docker.
+- Child processes receive an allowlisted environment, never the full parent environment.
+- Reports redact common secrets, URL credentials, sensitive query values, and untrusted
+  error text.
+- Timeouts, item counts, pagination, response bodies, and report evidence are bounded.
+- Remote DNS results are checked against private, loopback, link-local, and metadata
+  service ranges before connection.
+- Redirects are not followed automatically during metadata discovery.
+- The project never claims OS isolation unless the Docker daemon preflight succeeds.
+
+## Important limitations
+
+Direct stdio execution (`sandbox.adapter=none`) runs with the current user's operating
+system permissions. The scanner reports this as `SANDBOX001`, but cannot prevent filesystem
+or network access.
+
+Docker reduces risk but does not prove containment against kernel, daemon, runtime, or
+configuration vulnerabilities. Do not mount secrets, the Docker socket, home directories,
+or production source into the target container.
+
+Remote metadata can be malicious. The scanner bounds and redacts it, but operators should
+still run untrusted assessments on disposable hosts.
+
+See [THREAT_MODEL.md](THREAT_MODEL.md) for the full trust-boundary analysis.

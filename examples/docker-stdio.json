@@ -1,0 +1,21 @@
+{
+  "target": {
+    "transport": "stdio",
+    "command": "node",
+    "args": ["server.js"],
+    "cwd": "."
+  },
+  "policy": {
+    "timeoutMs": 5000,
+    "maxTools": 100,
+    "profile": "strict"
+  },
+  "sandbox": {
+    "adapter": "docker",
+    "image": "node@sha256:d45d78e7929b46875bbd4e29bea672d5bc48186c6c3588306521c815e78352d6",
+    "network": "none",
+    "memoryMb": 256,
+    "cpus": 1,
+    "pidsLimit": 128
+  }
+}

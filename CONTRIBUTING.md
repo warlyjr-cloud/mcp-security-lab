@@ -1,31 +1,59 @@
-# Contributing to MCP Security Lab
+# Contributing
 
-Thanks for your interest in improving this project. This document explains how to set up the project, what kinds of contributions are welcome, and how changes are reviewed.
+Thank you for improving MCP Security Lab. Contributions should preserve its deterministic,
+model-agnostic, and evidence-first design.
 
-## Ground rules
+All participation is subject to [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Before starting
+a large change, open an issue describing the problem and proposed approach.
 
-This project audits software that may be untrusted. Never commit real credentials, tokens, private server configurations, or scan reports produced against third-party systems. Example configurations must point only at fixtures inside this repository.
+## Development setup
 
-All participation is subject to the CODE_OF_CONDUCT.md file in the root of this repository.
+```powershell
+npm.cmd ci --ignore-scripts
+npm.cmd run check
+npm.cmd test
+npm.cmd run coverage
+npm.cmd run benchmark
+```
 
-## Getting started
+Node.js 24 LTS is recommended. Node 22 and 26 are also tested on Linux.
 
-Requirements: Node.js 20 or newer and npm.
+## Safety requirements
 
-Install dependencies with `npm install`, build with `npm run build`, and run the test suite with `npm test`. A quick manual check is `node dist/src/cli.js scan --config examples/insecure-server.json`, which performs launch-configuration checks only. Adding `--execute` starts the target server, so only use it against the fixtures in this repository or inside a disposable environment.
+- Use only synthetic fixtures. Never commit credentials, tokens, personal data, or private
+  server responses.
+- Do not invoke a tool from discovery code.
+- A command that invokes tools must name the tool explicitly, require separate consent, and
+  use verified OS-level isolation.
+- Do not inherit the full environment or include raw untrusted output in reports.
+- Bound every external operation and collection.
+- Do not describe Docker or any other adapter as absolute isolation.
 
-## Ways to contribute
+## Adding or changing a rule
 
-Useful contributions include new detection rules for risky launcher patterns or unsafe tool advertisements, additional fixtures that reproduce real-world MCP server behaviour, improvements to the SARIF and JSON output, documentation fixes, and bug reports with a reproducible configuration.
+1. Add a versioned definition in `src/rules/catalog.ts`.
+2. Keep evidence bounded and deterministic.
+3. Add unit tests for positive and negative cases.
+4. Add or update a synthetic benchmark case.
+5. Document false-positive considerations in `docs/rules.md`.
+6. Change `RULES_VERSION` when observable rule behavior changes.
 
-Before starting a large change, open an issue describing the problem and the approach so we can agree on direction first.
+Severity represents impact; confidence represents certainty of the inference. Do not raise
+severity to compensate for weak evidence.
 
 ## Pull requests
 
-Work on a branch off `main` and keep each pull request focused on a single concern. Every pull request should build cleanly, pass the test suite, and include tests for new detections. Describe what changed and why, and mention any new finding IDs or severity levels you introduced so the report format stays predictable.
+Keep changes focused. Explain the threat addressed, safety impact, tests performed, and
+user-visible behavior. All required checks must pass. Security-sensitive code should
+receive review from a code owner.
 
-Commit messages should describe the change in the imperative mood, for example "add detection for wildcard filesystem scopes".
+Write commit messages in the imperative mood, for example
+`add detection for wildcard filesystem scopes`.
+
+Bug fixes require a regression test. New dependencies require a reason, an audit result,
+and a review of maintenance and licensing risk.
 
 ## Reporting security issues
 
-Do not open a public issue for vulnerabilities in this tool. Use the private reporting channel described in SECURITY.md.
+Do not open a public issue for vulnerabilities in this tool. Follow the private reporting
+process in [SECURITY.md](SECURITY.md).

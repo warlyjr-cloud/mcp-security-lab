@@ -1,0 +1,15 @@
+{
+  "target": {
+    "transport": "stdio",
+    "command": "node",
+    "args": ["dist/test/fixtures/secure-server.js"],
+    "cwd": "../.."
+  },
+  "policy": {
+    "timeoutMs": 5000,
+    "maxTools": 20,
+    "maxResources": 20,
+    "maxPrompts": 20,
+    "profile": "balanced"
+  }
+}

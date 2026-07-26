@@ -1,0 +1,9 @@
+.git
+.github
+.npm-cache
+.stryker-tmp
+coverage
+dist
+node_modules
+reports
+*.log

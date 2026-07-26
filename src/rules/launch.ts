@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 
-import type { Finding, TargetConfig } from "../types.js";
+import type { Finding, StdioTargetConfig } from "../types.js";
+import { createFinding } from "./catalog.js";
 
 const SHELL_NAMES = new Set([
   "bash",
@@ -25,43 +26,40 @@ const SUSPICIOUS_ARGUMENTS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /\b(?:sudo|runas)\b/i, label: "privilege escalation" },
 ];
 
-export function inspectLaunch(target: TargetConfig): Finding[] {
+export function inspectLaunch(target: StdioTargetConfig): Finding[] {
   const findings: Finding[] = [];
   const executable = basename(target.command).toLowerCase();
   const joinedArguments = target.args.join(" ");
 
   if (SHELL_NAMES.has(executable)) {
-    findings.push({
-      id: "LAUNCH001",
-      severity: "high",
-      title: "Target is launched through a general-purpose shell",
-      evidence: `Configured executable is "${executable}".`,
-      recommendation: "Launch a fixed executable directly and pass arguments as an array.",
-      location: "target.command",
-    });
+    findings.push(
+      createFinding(
+        "LAUNCH001",
+        `Configured executable is "${executable}".`,
+        "target.command",
+      ),
+    );
   }
 
   if (NETWORK_INSTALLERS.has(executable)) {
-    findings.push({
-      id: "LAUNCH002",
-      severity: "medium",
-      title: "Target may download executable code at startup",
-      evidence: `Configured executable is "${executable}".`,
-      recommendation: "Pin and install the package before scanning, then execute the local binary.",
-      location: "target.command",
-    });
+    findings.push(
+      createFinding(
+        "LAUNCH002",
+        `Configured executable is "${executable}".`,
+        "target.command",
+      ),
+    );
   }
 
   for (const candidate of SUSPICIOUS_ARGUMENTS) {
     if (candidate.pattern.test(joinedArguments)) {
-      findings.push({
-        id: "LAUNCH003",
-        severity: "high",
-        title: "Suspicious launcher argument",
-        evidence: `Arguments contain a pattern associated with ${candidate.label}.`,
-        recommendation: "Replace the launcher with a fixed, reviewable command.",
-        location: "target.args",
-      });
+      findings.push(
+        createFinding(
+          "LAUNCH003",
+          `Arguments contain a pattern associated with ${candidate.label}.`,
+          "target.args",
+        ),
+      );
     }
   }
 

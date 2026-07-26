@@ -1,22 +1,30 @@
 ## Summary
 
-Describe what this change does and why it is needed.
+<!-- What changed and why? -->
 
 ## Related issue
 
-Closes #
+<!-- Closes # -->
 
 ## Type of change
 
-Bug fix / new detection rule / output format change / documentation / build and CI.
+<!-- Bug fix / rule / report format / documentation / build and CI. -->
 
-## Testing
+## Security and trust-boundary impact
 
-Describe how you verified the change. Include the command you ran and, when a detection changed, a short before-and-after of the report output.
+<!-- Does this change consent, execution, network, filesystem, secrets, or findings? -->
 
-## Checklist
+## Verification
 
-- [ ] `npm run build` and `npm test` pass locally
-- [ ] New or changed detections have test coverage
-- [ ] No credentials, tokens, or third-party scan output are included
-- [ ] Documentation updated when behaviour or output changed
+- [ ] `npm run check`
+- [ ] `npm test`
+- [ ] `npm run coverage`
+- [ ] `npm run benchmark`
+- [ ] Fixtures contain only synthetic data
+- [ ] New or changed rules include positive and negative tests
+- [ ] No credentials, tokens, private configurations, or third-party scan output are included
+- [ ] Documentation is updated when behavior or output changes
+
+## Compatibility
+
+<!-- Report schema, rules version, Node, MCP protocol, or platform effects. -->

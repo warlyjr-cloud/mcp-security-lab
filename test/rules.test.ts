@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSanitizedEnvironment, redactArguments } from "../src/environment.js";
+import {
+  createSanitizedEnvironment,
+  redactArguments,
+  redactUntrustedText,
+} from "../src/environment.js";
 import { inspectLaunch } from "../src/rules/launch.js";
 import { inspectTool } from "../src/rules/tools.js";
 
@@ -40,6 +44,13 @@ test("report arguments redact common secret forms", () => {
       "--safe",
       "visible",
     ],
+  );
+});
+
+test("untrusted report text cannot inject lines or control characters", () => {
+  assert.equal(
+    redactUntrustedText("first\r\nsecond\t\u0000token=secret"),
+    "first second \uFFFDtoken=[REDACTED]",
   );
 });
 

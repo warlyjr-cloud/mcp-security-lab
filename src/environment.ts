@@ -70,3 +70,34 @@ export function redactArguments(args: string[]): string[] {
 
   return redacted;
 }
+
+export function redactUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return "[INVALID URL]";
+  }
+  if (url.username !== "" || url.password !== "") {
+    url.username = "[REDACTED]";
+    url.password = "";
+  }
+  for (const key of [...url.searchParams.keys()]) {
+    if (/(?:api[-_]?key|authorization|credential|password|secret|token)/i.test(key)) {
+      url.searchParams.set(key, "[REDACTED]");
+    }
+  }
+  return url.toString();
+}
+
+export function redactUntrustedText(value: string, maximumLength = 1_000): string {
+  return value
+    .slice(0, maximumLength)
+    .replace(/\b(Bearer)\s+[A-Za-z0-9._~+/=-]+/gi, "$1 [REDACTED]")
+    .replace(
+      /\b(api[-_ ]?key|authorization|credential|password|secret|token)\b(\s*[:=]\s*)[^\s,;]+/gi,
+      "$1$2[REDACTED]",
+    )
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[\u0000-\u001F\u007F]/g, "\uFFFD");
+}

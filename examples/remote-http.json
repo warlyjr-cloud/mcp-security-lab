@@ -1,0 +1,15 @@
+{
+  "target": {
+    "transport": "streamable-http",
+    "url": "https://mcp.example.com/mcp"
+  },
+  "policy": {
+    "timeoutMs": 5000,
+    "maxTools": 100,
+    "maxResources": 100,
+    "maxPrompts": 100,
+    "maxResponseBytes": 1048576,
+    "profile": "strict",
+    "allowPrivateNetwork": false
+  }
+}

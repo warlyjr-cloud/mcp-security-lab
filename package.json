@@ -1,7 +1,7 @@
 {
   "name": "mcp-security-lab",
-  "version": "0.2.0",
-  "description": "Evidence-first security checks for local MCP servers.",
+  "version": "0.3.0",
+  "description": "Evidence-first security, conformance, and isolation checks for MCP servers.",
   "type": "module",
   "bin": {
     "mcpsl": "./dist/src/cli.js"
@@ -10,36 +10,65 @@
     "dist/src",
     "README.md",
     "SECURITY.md",
-    "LICENSE"
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs",
+    "examples"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test dist/test/**/*.test.js",
+    "test": "npm run build && npm run test:compiled",
+    "test:compiled": "node --test dist/test/**/*.test.js",
+    "coverage": "npm run build && node --test --experimental-test-coverage --test-coverage-include=dist/src/**/*.js --test-coverage-lines=80 --test-coverage-branches=65 --test-coverage-functions=80 dist/test/**/*.test.js",
+    "benchmark": "npm run build && node dist/src/cli.js benchmark --manifest benchmarks/manifest.json --consent-synthetic-execution",
+    "mutation": "npm run build && stryker run",
+    "mutation:dry": "npm run build && stryker run --dryRunOnly",
+    "quality": "npm run check && npm test && npm run coverage && npm run benchmark && npm audit",
+    "release:verify": "node scripts/verify-release.mjs",
     "scan:fixture": "npm run build && node dist/src/cli.js scan --config examples/insecure-server.json --execute",
-    "prepack": "npm run test"
+    "prepack": "npm run quality"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.14.0"
   },
+  "packageManager": "npm@11.16.0",
   "keywords": [
     "mcp",
     "security",
     "model-context-protocol",
     "prompt-injection",
+    "oauth",
+    "sandbox",
+    "sarif",
     "cli"
   ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/warlyjr-cloud/mcp-security-lab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/warlyjr-cloud/mcp-security-lab/issues"
+  },
+  "homepage": "https://github.com/warlyjr-cloud/mcp-security-lab#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "9.6.1",
     "@types/node": "26.1.1",
+    "fast-check": "4.9.0",
     "typescript": "7.0.2",
     "yaml": "2.9.0"
   },
   "overrides": {
-    "@hono/node-server": "2.0.11"
+    "@hono/node-server": "2.0.11",
+    "qs": "6.15.3"
   }
 }

@@ -4,7 +4,7 @@ import test from "node:test";
 
 import { parse } from "yaml";
 
-test("GitHub Action manifest is valid and uploads SARIF with the current major action", async () => {
+test("GitHub Action manifest is valid and pins the SARIF uploader by SHA", async () => {
   const manifest = parse(await readFile("action.yml", "utf8")) as Record<string, any>;
 
   assert.equal(manifest.name, "MCP Security Lab");
@@ -14,8 +14,10 @@ test("GitHub Action manifest is valid and uploads SARIF with the current major a
   assert.equal(manifest.inputs["upload-sarif"].default, "true");
 
   const uploadStep = manifest.runs.steps.find(
-    (step: Record<string, unknown>) => step.uses === "github/codeql-action/upload-sarif@v4",
+    (step: Record<string, unknown>) =>
+      step.uses ===
+      "github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81",
   );
-  assert.ok(uploadStep, "upload-sarif@v4 step is required");
+  assert.ok(uploadStep, "SHA-pinned upload-sarif step is required");
   assert.equal(uploadStep.with.sarif_file, "${{ steps.scan.outputs.sarif }}");
 });

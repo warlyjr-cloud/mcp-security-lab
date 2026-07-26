@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "minimumPrecision": 1,
+  "minimumRecall": 1,
+  "cases": [
+    {
+      "name": "secure metadata server",
+      "config": "configs/secure-server.json",
+      "execute": true,
+      "synthetic": true,
+      "expectedFindingIds": ["SANDBOX001"]
+    },
+    {
+      "name": "insecure metadata server",
+      "config": "configs/insecure-server.json",
+      "execute": true,
+      "synthetic": true,
+      "expectedFindingIds": [
+        "SANDBOX001",
+        "TOOL003",
+        "TOOL004",
+        "TOOL005",
+        "TOOL006",
+        "TOOL009",
+        "TOOL011",
+        "TOOL012"
+      ]
+    },
+    {
+      "name": "shell launcher",
+      "config": "configs/shell-launch.json",
+      "execute": false,
+      "synthetic": true,
+      "expectedFindingIds": ["EXEC001", "LAUNCH001", "LAUNCH003"]
+    }
+  ]
+}

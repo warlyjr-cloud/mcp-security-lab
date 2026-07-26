@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { basename, isAbsolute, relative, resolve, sep } from "node:path";
 
+import { redactUntrustedText } from "./environment.js";
 import type { ScanReport, Severity } from "./types.js";
 
 const ICONS: Record<Severity, string> = {
@@ -75,6 +76,9 @@ export function reportAsSarif(
 
   for (const finding of report.findings) {
     if (!rules.has(finding.id)) {
+      const references = finding.references
+        .map((reference) => `[${reference.label}](${reference.url})`)
+        .join(" · ");
       rules.set(finding.id, {
         id: finding.id,
         shortDescription: { text: finding.title },
@@ -82,7 +86,9 @@ export function reportAsSarif(
         defaultConfiguration: { level: sarifLevel(finding.severity) },
         help: {
           text: finding.recommendation,
-          markdown: `**Recommendation:** ${finding.recommendation}`,
+          markdown: `**Recommendation:** ${finding.recommendation}${
+            references === "" ? "" : `\n\n**References:** ${references}`
+          }`,
         },
       });
     }
@@ -101,7 +107,7 @@ export function reportAsSarif(
           },
         },
         automationDetails: {
-          id: "mcp-security-lab/",
+          id: `mcp-security-lab/${report.scanner.rulesVersion}/`,
         },
         invocations: [
           {
@@ -110,6 +116,8 @@ export function reportAsSarif(
               connected: report.execution.connected,
               toolsInvoked: report.execution.toolsInvoked,
               osSandboxed: report.execution.osSandboxed,
+              sandboxAdapter: report.execution.sandbox.adapter,
+              policyProfile: report.policy.profile,
             },
           },
         ],
@@ -141,7 +149,10 @@ export function reportAsSarif(
           },
           properties: {
             severity: finding.severity,
+            confidence: finding.confidence,
+            category: finding.category,
             recommendation: finding.recommendation,
+            references: finding.references.map((reference) => reference.url),
             scannerLocation: finding.location ?? "scan",
           },
         })),
@@ -153,16 +164,24 @@ export function reportAsSarif(
 }
 
 export function reportAsText(report: ScanReport): string {
+  const target = redactUntrustedText(
+    report.target.transport === "stdio"
+      ? `${report.target.command} ${report.target.args.join(" ")}`.trim()
+      : report.target.url,
+    1_000,
+  );
   const lines = [
     "MCP Security Lab",
-    `Target: ${report.target.command} ${report.target.args.join(" ")}`.trim(),
-    `Connected: ${report.execution.connected ? "yes" : "no"} | Tools invoked: 0 | OS sandbox: no`,
+    `Target: ${target}`,
+    `Transport: ${report.target.transport} | Policy: ${report.policy.profile} (fail at ${report.policy.failureThreshold})`,
+    `Connected: ${report.execution.connected ? "yes" : "no"} | Tools invoked: ${report.execution.toolsInvoked} | Sandbox: ${report.execution.sandbox.adapter} (${report.execution.sandbox.verified ? "verified" : "not verified"})`,
     `Findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low, ${report.summary.info} info`,
     "",
   ];
 
   for (const finding of report.findings) {
     lines.push(`[${ICONS[finding.severity]}] ${finding.id} ${finding.title}`);
+    lines.push(`  Category: ${finding.category} | Confidence: ${finding.confidence}`);
     lines.push(`  Evidence: ${finding.evidence}`);
     lines.push(`  Recommendation: ${finding.recommendation}`);
     if (finding.location !== undefined) {
@@ -171,6 +190,8 @@ export function reportAsText(report: ScanReport): string {
     lines.push("");
   }
 
-  lines.push("Limitation: target processes are not isolated from the host filesystem or network.");
+  for (const limitation of report.execution.limitations) {
+    lines.push(`Limitation: ${limitation}`);
+  }
   return `${lines.join("\n")}\n`;
 }

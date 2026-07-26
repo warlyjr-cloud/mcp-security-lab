@@ -1,0 +1,45 @@
+name: Rule proposal
+description: Propose a deterministic, evidence-backed security rule.
+title: "[Rule] "
+labels: [rule]
+body:
+  - type: textarea
+    id: threat
+    attributes:
+      label: Threat and impact
+      description: Describe the observable security property, not a vendor-specific preference.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Deterministic evidence
+      description: What bounded metadata or behavior proves the condition?
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Proposed severity
+      options: [critical, high, medium, low, info]
+    validations:
+      required: true
+  - type: dropdown
+    id: confidence
+    attributes:
+      label: Proposed confidence
+      options: [high, medium, low]
+    validations:
+      required: true
+  - type: textarea
+    id: negatives
+    attributes:
+      label: False-positive and negative cases
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Primary references
+    validations:
+      required: true
