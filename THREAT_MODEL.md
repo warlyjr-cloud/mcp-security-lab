@@ -39,6 +39,9 @@ crash the scanner, exfiltrate the operator's environment, or inject content into
   timeout and caps the size of discovery responses so a hostile server cannot exhaust the scanner.
 - **Insecure remote transport.** Plaintext HTTP on non-local endpoints, credentials in the URL, or a
   remote server that accepts anonymous connections (`REMOTE002`–`REMOTE004`).
+- **Weak OAuth authorization posture.** A protected remote server that omits its resource-metadata
+  pointer, serves unreachable/malformed OAuth metadata, does not require PKCE, or exposes OAuth
+  endpoints over plaintext HTTP (`AUTH001`–`AUTH004`, per RFC 9728 / RFC 8414).
 - **Secret leakage into reports.** Credentials passed as arguments or in URLs are redacted; only an
   allowlist of environment variables is inherited by the target.
 - **Uncontrolled active probing.** `--fuzz` executes tool code, so it requires an OS-level sandbox
@@ -54,3 +57,10 @@ crash the scanner, exfiltrate the operator's environment, or inject content into
   reduce risk; they do not prove a server is safe.
 - **No guarantee against a determined sandbox escape.** Container isolation reduces, but does not
   eliminate, the risk of running untrusted code. Use disposable runners for unknown software.
+- **OAuth discovery follows server-controlled URLs (SSRF).** Auditing a remote server's authorization
+  posture (`AUTH00x`) requires fetching the metadata URLs the server advertises. Before contacting any
+  such URL the scanner resolves the host and refuses loopback, link-local (incl. `169.254.169.254`),
+  and private addresses — reporting the attempt as `AUTH005` — requires https for non-local hosts, uses
+  `redirect: "manual"` so a 3xx cannot bypass the check, caps the number of authorization servers
+  contacted, and bounds every request with a timeout. Loopback metadata is followed only when the
+  operator's own target is local (a dev scan). The scanner never forwards responses anywhere.

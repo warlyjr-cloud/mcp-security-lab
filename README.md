@@ -94,7 +94,12 @@ To scan a remote MCP server, give the target a `url` instead of a `command`:
 `transport` defaults to `"http"` (the modern **Streamable HTTP** transport); use `"sse"` only for
 legacy servers. Remote targets are checked for plaintext HTTP on non-local hosts (`REMOTE002`),
 credentials embedded in the URL (`REMOTE003`, redacted from the report), and — with `--execute` —
-whether the server accepts unauthenticated connections (`REMOTE004`). See [docs/RULES.md](docs/RULES.md).
+whether the server accepts unauthenticated connections (`REMOTE004`).
+
+With `--execute`, a protected remote server is also audited against the MCP authorization spec
+(OAuth 2.1 + RFC 9728 / RFC 8414): a missing resource-metadata pointer (`AUTH001`), unreachable or
+malformed OAuth metadata (`AUTH002`), an authorization server that does not require PKCE/S256
+(`AUTH003`), and OAuth endpoints served over plaintext HTTP (`AUTH004`). See [docs/RULES.md](docs/RULES.md).
 
 ```powershell
 node dist/src/cli.js scan --config examples/remote-server.json --execute
@@ -164,5 +169,7 @@ See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
 
 1. Windows Sandbox execution adapter (Docker container adapter shipped).
 2. Explicit, synthetic tool-call scenarios with canary files and blocked egress.
-3. Deeper OAuth checks for remote servers (Streamable HTTP transport and basic remote checks shipped).
-4. Public conformance corpus maintained with the MCP community.
+3. Public conformance corpus maintained with the MCP community.
+
+Shipped: Streamable HTTP transport, remote transport checks, and OAuth authorization-posture checks
+(RFC 9728 / RFC 8414).

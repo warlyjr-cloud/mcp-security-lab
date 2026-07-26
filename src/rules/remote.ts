@@ -1,8 +1,7 @@
+import { isCredentialQueryKey } from "../environment.js";
 import type { Finding, TargetConfig } from "../types.js";
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
-const SENSITIVE_QUERY_KEY_PATTERN =
-  /^(api[-_]?key|access[-_]?token|auth|authorization|credential|key|password|secret|token)$/i;
 
 function isLocal(hostname: string): boolean {
   const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
@@ -49,9 +48,10 @@ export function inspectRemote(target: TargetConfig): Finding[] {
   }
 
   const hasUserInfo = url.username !== "" || url.password !== "";
-  const hasSensitiveQuery = [...url.searchParams.keys()].some((key) =>
-    SENSITIVE_QUERY_KEY_PATTERN.test(key),
-  );
+  const fragmentParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+  const hasSensitiveQuery =
+    [...url.searchParams.keys()].some(isCredentialQueryKey) ||
+    [...fragmentParams.keys()].some(isCredentialQueryKey);
   if (hasUserInfo || hasSensitiveQuery) {
     findings.push({
       id: "REMOTE003",
