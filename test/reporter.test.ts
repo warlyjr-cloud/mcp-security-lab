@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { reportAsSarif, reportAsText } from "../src/reporter.js";
+import { reportAsJson, reportAsMarkdown, reportAsSarif, reportAsText } from "../src/reporter.js";
 import type { ScanReport } from "../src/types.js";
 
 const report: ScanReport = {
@@ -83,6 +83,32 @@ test("SARIF emits CWE and OWASP taxonomy on rules and results", () => {
   assert.equal(sarif.runs[0].results[0].properties.owasp, "LLM01");
 });
 
+test("SARIF maps medium findings to warning and low findings to note", () => {
+  const mixedSeverity: ScanReport = {
+    ...report,
+    findings: [
+      {
+        id: "TOOL010",
+        severity: "medium",
+        title: "Context Exhaustion Risk",
+        evidence: "missing pagination",
+        recommendation: "add pagination",
+      },
+      {
+        id: "TOOL009",
+        severity: "low",
+        title: "Input schema accepts undeclared properties",
+        evidence: "additionalProperties is not false",
+        recommendation: "reject unknown fields",
+      },
+    ],
+  };
+  const sarif = JSON.parse(reportAsSarif(mixedSeverity, "examples/server.json", process.cwd()));
+  const results = sarif.runs[0].results as Array<{ ruleId: string; level: string }>;
+  assert.equal(results.find((result) => result.ruleId === "TOOL010")?.level, "warning");
+  assert.equal(results.find((result) => result.ruleId === "TOOL009")?.level, "note");
+});
+
 test("text report reflects the real sandbox state", () => {
   const withoutSandbox = reportAsText(report);
   assert.match(withoutSandbox, /OS sandbox: no/);
@@ -93,4 +119,59 @@ test("text report reflects the real sandbox state", () => {
   });
   assert.match(sandboxed, /OS sandbox: yes/);
   assert.match(sandboxed, /network-isolated Docker container/);
+});
+
+test("reportAsJson serializes the full report as pretty-printed JSON", () => {
+  const json = reportAsJson(report);
+  assert.match(json, /\n$/);
+  assert.deepEqual(JSON.parse(json), report);
+});
+
+test("reportAsMarkdown reports grade A and no findings when the report is clean", () => {
+  const clean: ScanReport = {
+    ...report,
+    summary: { info: 0, low: 0, medium: 0, high: 0, critical: 0 },
+    findings: [],
+  };
+  const markdown = reportAsMarkdown(clean);
+  assert.match(markdown, /# CyberConsult Advanced Security Suite — MCP Verifier Report/);
+  assert.match(markdown, /Grade_A-brightgreen/);
+  assert.match(markdown, /No security findings were detected/);
+});
+
+test("reportAsMarkdown grades B for medium-only findings and C for high findings", () => {
+  const mediumOnly = reportAsMarkdown({
+    ...report,
+    summary: { info: 0, low: 0, medium: 1, high: 0, critical: 0 },
+    findings: [],
+  });
+  assert.match(mediumOnly, /Grade_B-yellow/);
+
+  const withHigh = reportAsMarkdown(report);
+  assert.match(withHigh, /Grade_C-orange/);
+});
+
+test("reportAsMarkdown grades F and includes remediation snippets for critical findings", () => {
+  const markdown = reportAsMarkdown({
+    ...report,
+    summary: { info: 0, low: 0, medium: 0, high: 0, critical: 1 },
+    findings: [
+      {
+        id: "DATA001",
+        severity: "critical",
+        title: "Sensitive Data Leak Detected: AWS Access Key",
+        evidence: "matched signature",
+        recommendation: "Redact the value before returning it.",
+        remediationSnippet: 'text.replace("secret", "[REDACTED]")',
+      },
+    ],
+  });
+
+  assert.match(markdown, /Grade_F-red/);
+  assert.match(markdown, /\[CRITICAL\] DATA001: Sensitive Data Leak Detected: AWS Access Key/);
+  assert.match(markdown, /\*\*Location:\*\* `unknown`/);
+  assert.match(markdown, /\*\*Auto-Remediation:\*\*/);
+  assert.match(markdown, /text\.replace\("secret", "\[REDACTED\]"\)/);
+  assert.doesNotMatch(markdown, /\*\*CWE:\*\*/);
+  assert.doesNotMatch(markdown, /\*\*OWASP:\*\*/);
 });

@@ -71,3 +71,52 @@ test("an invalid transport is rejected", async () => {
   });
   await assert.rejects(loadConfig(configPath), /must be "http" or "sse"/);
 });
+
+test("malformed JSON is rejected with a clear error", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "mcp-security-lab-"));
+  const configPath = join(directory, "config.json");
+  await writeFile(configPath, "{ not valid json", "utf8");
+  await assert.rejects(loadConfig(configPath), /Config is not valid JSON/);
+});
+
+test("a config that is not a JSON object is rejected", async () => {
+  const configPath = await writeConfig(["not", "an", "object"]);
+  await assert.rejects(loadConfig(configPath), /Config must be a JSON object/);
+});
+
+test("target.url must be a string when provided", async () => {
+  const configPath = await writeConfig({ target: { url: 12345 } });
+  await assert.rejects(loadConfig(configPath), /target.url must be a string/);
+});
+
+test("target.command is required when url is not provided", async () => {
+  const configPath = await writeConfig({ target: { cwd: "." } });
+  await assert.rejects(
+    loadConfig(configPath),
+    /target.command must be a non-empty string when url is not provided/,
+  );
+});
+
+test("target.args must be an array of strings", async () => {
+  const configPath = await writeConfig({ target: { command: "node", args: [1, 2] } });
+  await assert.rejects(loadConfig(configPath), /target.args must be an array of strings/);
+});
+
+test("target.cwd must be a non-empty string", async () => {
+  const configPath = await writeConfig({ target: { command: "node", cwd: "   " } });
+  await assert.rejects(loadConfig(configPath), /target.cwd must be a non-empty string/);
+});
+
+test("policy.timeoutMs and policy.maxTools reject out-of-range values", async () => {
+  const badTimeout = await writeConfig({
+    target: { command: "node", args: [] },
+    policy: { timeoutMs: -1 },
+  });
+  await assert.rejects(loadConfig(badTimeout), /policy.timeoutMs must be an integer between 1 and/);
+
+  const badMaxTools = await writeConfig({
+    target: { command: "node", args: [] },
+    policy: { maxTools: 1.5 },
+  });
+  await assert.rejects(loadConfig(badMaxTools), /policy.maxTools must be an integer between 1 and/);
+});

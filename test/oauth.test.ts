@@ -12,6 +12,7 @@ interface MockConfig {
   pointerOverride?: (base: string) => string; // full WWW-Authenticate header value
   prm?: (base: string) => unknown; // protected resource metadata, or omit for 404
   asMeta?: (base: string) => unknown; // authorization server metadata, or omit for 404
+  probeDelayMs?: number; // delay before responding to the /mcp probe, to exercise timeouts
 }
 
 async function withMockServer(
@@ -23,21 +24,28 @@ async function withMockServer(
     const path = (req.url ?? "").split("?")[0];
 
     if (req.method === "POST" && path === "/mcp") {
-      if (config.challenge === false) {
-        res.setHeader("content-type", "application/json");
-        res.end(JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} }));
-        return;
+      const respond = (): void => {
+        if (config.challenge === false) {
+          res.setHeader("content-type", "application/json");
+          res.end(JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} }));
+          return;
+        }
+        if (config.pointerOverride !== undefined) {
+          res.setHeader("WWW-Authenticate", config.pointerOverride(base));
+        } else if (config.withPointer !== false) {
+          res.setHeader(
+            "WWW-Authenticate",
+            `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
+          );
+        }
+        res.statusCode = config.challengeStatus ?? 401;
+        res.end();
+      };
+      if (config.probeDelayMs !== undefined) {
+        setTimeout(respond, config.probeDelayMs);
+      } else {
+        respond();
       }
-      if (config.pointerOverride !== undefined) {
-        res.setHeader("WWW-Authenticate", config.pointerOverride(base));
-      } else if (config.withPointer !== false) {
-        res.setHeader(
-          "WWW-Authenticate",
-          `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
-        );
-      }
-      res.statusCode = config.challengeStatus ?? 401;
-      res.end();
       return;
     }
 
@@ -214,6 +222,68 @@ test("assessServerUrl blocks SSRF to private and reserved addresses", async () =
   // Non-http(s) schemes are refused.
   assert.equal(await assessServerUrl("ftp://example.com/x", false), "unsafe");
   assert.equal(await assessServerUrl("file:///etc/passwd", false), "unsafe");
+});
+
+test("assessServerUrl reports unsafe for unparseable URLs and unresolvable hosts", async () => {
+  assert.equal(await assessServerUrl("not a url", false), "unsafe");
+  assert.equal(
+    await assessServerUrl("https://definitely-not-a-real-host-xyz123.invalid/x", false),
+    "unsafe",
+  );
+});
+
+test("inspectRemoteAuth returns no findings for an unparseable target URL", async () => {
+  assert.deepEqual(await inspectRemoteAuth("not a url", 3000), []);
+});
+
+test("a malformed OAuth endpoint URL is tolerated instead of flagged as plaintext", async () => {
+  await withMockServer(
+    {
+      prm: compliantPrm,
+      asMeta: (base) => ({
+        issuer: base,
+        authorization_endpoint: "not a valid url",
+        token_endpoint: `${base}/token`,
+        code_challenge_methods_supported: ["S256"],
+      }),
+    },
+    async (mcpUrl) => {
+      const findings = await inspectRemoteAuth(mcpUrl, 3000);
+      assert.equal(
+        findings.some((finding) => finding.evidence.includes("authorization_endpoint")),
+        false,
+      );
+    },
+  );
+});
+
+test("an authorization server pointing at a link-local address is flagged (AUTH005)", async () => {
+  await withMockServer(
+    {
+      prm: (base) => ({
+        resource: `${base}/mcp`,
+        authorization_servers: ["http://169.254.169.254"],
+      }),
+    },
+    async (mcpUrl) => {
+      const findings = await inspectRemoteAuth(mcpUrl, 3000);
+      const auth5 = findings.find((finding) => finding.id === "AUTH005");
+      assert.ok(auth5);
+      assert.match(auth5?.evidence ?? "", /authorization server metadata/);
+    },
+  );
+});
+
+test("a probe that times out is treated the same as no response", async () => {
+  await withMockServer(
+    // The mock delays its response well past the timeout, forcing safeFetch's
+    // own abort/catch path deterministically instead of racing the mock.
+    { probeDelayMs: 200 },
+    async (mcpUrl) => {
+      const findings = await inspectRemoteAuth(mcpUrl, 20);
+      assert.deepEqual(findings, []);
+    },
+  );
 });
 
 test("a server steering the scanner to a private address is flagged (AUTH005)", async () => {
