@@ -26,7 +26,7 @@ Return ONLY a valid JSON array containing exactly 3 objects. Each object must re
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-opus-4-8",
       max_tokens: 1024,
       system: "You output only pure JSON arrays.",
       messages: [{ role: "user", content: prompt }],

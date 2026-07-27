@@ -43,7 +43,7 @@ test("firewall policy denies tools named in critical/high finding titles", () =>
 
   assert.equal(policy.$schema, "https://mcp-security-lab.github.io/schemas/firewall-v1.json");
   assert.equal(policy.version, "1.0");
-  assert.equal(policy.generatedBy, "CyberConsult Advanced Security Suite (MCP Verifier)");
+  assert.equal(policy.generatedBy, "MCP Security Lab (MCP Verifier)");
   assert.equal(policy.target, "node");
   const rules = policy.rules as { tools: { deny: string[]; allow: string[] } };
   assert.deepEqual(rules.tools.deny, ["delete_everything"]);

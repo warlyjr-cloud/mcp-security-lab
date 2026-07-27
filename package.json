@@ -1,9 +1,10 @@
 {
-  "name": "cyberconsult-advanced-security-suite",
-  "version": "1.0.0",
-  "description": "CyberConsult Advanced Security Suite (MCP Verifier): evidence-first security checks for local and remote MCP servers.",
+  "name": "mcp-security-lab",
+  "version": "1.1.0",
+  "description": "MCP Security Lab — MCP Verifier: evidence-first, deterministic security checks for local and remote Model Context Protocol servers, with optional Claude-powered remediation.",
   "type": "module",
   "bin": {
+    "mcp-security-lab": "./dist/src/cli.js",
     "mcpsl": "./dist/src/cli.js"
   },
   "files": [
@@ -26,7 +27,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.ts": [
+    "src/**/*.ts": [
       "eslint --fix",
       "prettier --write"
     ],

@@ -9,7 +9,7 @@ export const Header: React.FC = () => {
     <div className="flex justify-between items-center p-2 border-b border-term-border bg-term-bg/90">
       <div className="flex items-center gap-2">
         <ShieldAlert className="text-term-warn glow" size={20} />
-        <span className="font-bold tracking-widest uppercase">CyberConsult <span className="text-term-dim">SYS::CORE</span></span>
+        <span className="font-bold tracking-widest uppercase">MCP Security Lab <span className="text-term-dim">SYS::CORE</span></span>
       </div>
       
       <div className="flex items-center gap-4 text-sm">

@@ -1,17 +1,12 @@
-# CyberConsult Advanced Security Suite
+# MCP Security Lab — MCP Verifier
 
 [![CI](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml)
 [![npm version](https://badge.fury.io/js/mcp-security-lab.svg)](https://badge.fury.io/js/mcp-security-lab)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**CyberConsult Advanced Security Suite** nasceu como um projeto focado chamado *MCP Security Lab*, atuando originalmente apenas como um verificador de segurança de linha de comando para servidores Model Context Protocol (MCP). 
+**MCP Verifier automatically audits Model Context Protocol (MCP) servers for prompt injections, context-window exhaustion, and unsafe tool schemas — deterministically, without requiring an LLM or API keys. It runs natively in CI/CD pipelines (SARIF 2.1.0) and supports Docker sandboxing for safe active probing.**
 
-### A Evolução do Projeto
-O que começou como um laboratório de segurança de MCP evoluiu significativamente. Hoje, o sistema se transformou no **CyberConsult Advanced Security Suite**, uma aplicação web Full-Stack completa (React + Node.js) com uma interface retro-futurista de Terminal (TUI). O projeto agora abrange não apenas a verificação de MCP, mas simuladores de escaneamento de portas, análise de feed de ameaças (CVEs), integração direta com IA (Google Gemini) para mitigação de vulnerabilidades, e auditoria de conformidade (OWASP, NIST).
-
-A aplicação continuará evoluindo para se tornar uma plataforma definitiva de DevSecOps e inteligência de cibersegurança. O núcleo original de verificação (MCP Verifier) continua operando sob o capô como parte desse grande ecossistema em constante expansão.
-
-> **MCP Verifier automatically audits Model Context Protocol (MCP) servers for prompt injections, context window exhaustion, and unsafe tool schemas without requiring an LLM or API keys. It runs natively in CI/CD pipelines (SARIF 2.1.0) and supports Docker Sandboxing for safe active probing.**
+The deterministic CLI is the core product. On top of it, two **optional** AI features are built directly on **Anthropic's Claude**: `--auto-fix` remediation and an interactive Security Consultant. An **experimental** web UI (React + Node.js, retro-terminal styling) wraps the Claude Consultant for demos — see [Experimental web UI](#experimental-web-ui) below; the CLI does not depend on it.
 
 The MVP audits how a local or remote MCP server is launched and what it advertises during the MCP
 handshake. It detects risky launcher patterns (including inline code execution and encoded payloads),
@@ -31,7 +26,7 @@ rule catalog is documented in [docs/RULES.md](docs/RULES.md); the trust boundari
 
 Most MCP tooling either (a) trusts server metadata at face value, or (b) requires an LLM/API key
 to reason about risk, adding cost, latency, and a non-deterministic verdict to a security gate.
-CyberConsult Advanced Security Suite is positioned differently:
+MCP Verifier is positioned differently:
 
 - **Deterministic by default.** MCP Verifier's core rule set (launcher patterns, tool annotations,
   schema hygiene, prompt-injection text matching, context-exhaustion heuristics) runs with no LLM
@@ -46,12 +41,12 @@ CyberConsult Advanced Security Suite is positioned differently:
 - **Safety-conscious active probing.** Optional fuzzing (`--fuzz`) only runs inside a
   network-isolated Docker sandbox, never against a live/trusted server on the host.
 
-## CyberConsult and the Claude for OSS Incubator
+## MCP Security Lab and the Claude for OSS Incubator
 
 This project has architected its AI-assisted features — automated remediation suggestions and an
 interactive Security Consultant — directly on top of Anthropic's Claude and the Model Context
 Protocol, and treats MCP server auditing as a concrete, real-world case study of an AI system
-acting as a security architect. On that basis, CyberConsult Advanced Security Suite considers
+acting as a security architect. On that basis, MCP Security Lab considers
 itself a strong **candidate** for the Claude for OSS Incubator: an open-source project built from
 the ground up to demonstrate what Claude and MCP can do to strengthen security practices across
 the open-source community.
@@ -91,7 +86,7 @@ target command will run and enables MCP discovery.
 Scanning the bundled intentionally-insecure fixture (`--execute`):
 
 ```text
-CyberConsult Advanced Security Suite — MCP Verifier
+MCP Security Lab — MCP Verifier
 Target: node dist/fixtures/insecure-server.js
 Connected: yes | Transport: stdio | Tools invoked: 0 | OS sandbox: no
 Findings: 0 critical, 7 high, 2 medium, 2 low, 0 info
@@ -206,13 +201,30 @@ node dist/src/cli.js scan --config examples/vulnerable-server.json --execute --s
 crashes on malicious input, so this command demonstrates a `FUZZ001` critical finding. A well-behaved
 server that returns a proper MCP error for bad input produces no fuzzing finding.
 
-## 🚀 Version 1.0.0 Golden Key Features (AI-Driven)
+## Claude-powered features (optional, AI-driven)
 
-The v1.0.0 release introduces 3 major AI-driven capabilities for DevSecOps:
+On top of the deterministic engine, three opt-in capabilities use **Anthropic's Claude**
+(`claude-opus-4-8`, requires `ANTHROPIC_API_KEY`):
 
-1. **Auto-Remediation (`--auto-fix`)**: Connects to the Anthropic API (requires `ANTHROPIC_API_KEY`) to generate a `MCP_REMEDIATION.md` file with precise code snippets and instructions on how to patch vulnerabilities detected during the scan.
-2. **Zero-Trust Firewall Generator (`--generate-firewall`)**: Generates an `mcp-firewall.json` policy that you can use to block malicious or unauthenticated tools based on the scan results.
-3. **Cyber-Consultant TUI (`--format dashboard`)**: Run in dashboard mode and press `c` while highlighting a vulnerability to open a built-in terminal chat session. You can talk to an AI Security Consultant to ask for live help on fixing the specific issue.
+1. **Auto-Remediation (`--auto-fix`)**: Generates a `MCP_REMEDIATION.md` file with precise code snippets and instructions on how to patch the high/critical vulnerabilities detected during the scan.
+2. **Zero-Trust Firewall Generator (`--generate-firewall`)**: Generates an `mcp-firewall.json` policy that you can use to block malicious or unauthenticated tools based on the scan results. (Deterministic — no API key required.)
+3. **Security Consultant TUI (`--format dashboard`)**: Run in dashboard mode and press `c` while highlighting a finding to open a built-in terminal chat session backed by Claude, for live help fixing that specific issue.
+
+## Experimental web UI
+
+The `frontend/` (React + Vite) and `backend/` (Node.js + Express) directories contain an
+**experimental, demo-only** web interface with retro-terminal styling. Its purpose is to
+showcase the **Claude-powered Security Consultant** in a browser:
+
+- The **AI Security Consultant** panel is real — it calls the `backend/` service, which talks to
+  **Anthropic's Claude** (`claude-opus-4-8`). Set `ANTHROPIC_API_KEY` for the backend and run
+  `npm run dev` in `backend/`, then `npm run dev` in `frontend/`.
+- The **Target Scanner** and **System Summary** panels are **simulations** — they render
+  illustrative output and do **not** run a real scan. For real, deterministic auditing use the
+  MCP Verifier CLI documented above.
+
+The web UI is not required to use MCP Verifier and is not published to npm. It is included as a
+proof-of-concept of Claude-assisted MCP security tooling and is under active development.
 
 ## GitHub Action
 
