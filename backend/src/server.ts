@@ -16,8 +16,22 @@ const VERIFIER_CLI = require.resolve('mcp-security-lab/dist/src/cli.js');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
+// This backend is a LOCAL developer demo. Restrict CORS to localhost origins and
+// cap the request body so the API is not a general-purpose remote surface.
+const LOCALHOST_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            // Allow same-origin / tools with no Origin header, and localhost only.
+            if (!origin || LOCALHOST_ORIGIN.test(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Origin not allowed'));
+            }
+        },
+    }),
+);
+app.use(express.json({ limit: '64kb' }));
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) {
@@ -66,17 +80,52 @@ Context: ${moduleContext || 'General Cybersecurity Consultation'}`;
 });
 
 /**
- * Run the real MCP Verifier CLI against a posted config and return its JSON
- * report. This replaces the front-end simulation with a genuine scan.
+ * A strictly rebuilt, safe scan config. We never trust the posted object
+ * verbatim: we copy only known fields into a fresh object and force our own
+ * policy, dropping anything unexpected.
+ */
+interface SafeConfig {
+    target: { command?: string; args?: string[]; cwd?: string; url?: string; transport?: 'http' | 'sse' };
+    policy: { timeoutMs: number; maxTools: number };
+}
+
+function sanitizeConfig(raw: unknown): SafeConfig | null {
+    if (typeof raw !== 'object' || raw === null) return null;
+    const target = (raw as Record<string, unknown>).target;
+    if (typeof target !== 'object' || target === null) return null;
+    const t = target as Record<string, unknown>;
+
+    const clean: SafeConfig = { target: {}, policy: { timeoutMs: 5000, maxTools: 100 } };
+    if (typeof t.url === 'string') {
+        clean.target.url = t.url;
+        if (t.transport === 'sse' || t.transport === 'http') clean.target.transport = t.transport;
+    } else if (typeof t.command === 'string') {
+        clean.target.command = t.command;
+        clean.target.args = Array.isArray(t.args)
+            ? t.args.filter((arg): arg is string => typeof arg === 'string')
+            : [];
+        clean.target.cwd = typeof t.cwd === 'string' ? t.cwd : '.';
+    } else {
+        return null;
+    }
+    return clean;
+}
+
+/**
+ * Run the MCP Verifier CLI against a posted config and return its JSON report.
  *
- * Body: { config: ScanConfig, execute?: boolean }
- * `execute` defaults to false (launch-configuration checks only). Enabling it
- * starts the target process on this host, so only allow it for trusted configs.
+ * SECURITY: this endpoint deliberately runs **launch-configuration checks only**
+ * — it never passes `--execute`, so the CLI statically inspects the config and
+ * never spawns the target process. Network input therefore cannot cause code
+ * execution. The config is strictly rebuilt (sanitizeConfig) before use. To run
+ * a full discovery/`--execute` scan, use the CLI directly on a trusted host.
  */
 app.post('/api/scan', async (req: Request, res: Response): Promise<void> => {
-    const { config, execute } = req.body ?? {};
-    if (typeof config !== 'object' || config === null) {
-        res.status(400).json({ error: 'A "config" object (ScanConfig) is required.' });
+    const config = sanitizeConfig((req.body ?? {}).config);
+    if (config === null) {
+        res.status(400).json({
+            error: 'A valid "config" is required: { target: { command, args?, cwd? } | { url, transport? } }.',
+        });
         return;
     }
 
@@ -86,10 +135,9 @@ app.post('/api/scan', async (req: Request, res: Response): Promise<void> => {
         const configPath = join(directory, 'config.json');
         await writeFile(configPath, JSON.stringify(config), 'utf8');
 
+        // No --execute: static launch-configuration checks only. The target is
+        // never started, so a malicious command string cannot run.
         const args = ['scan', '--config', configPath, '--format', 'json'];
-        if (execute === true) {
-            args.push('--execute');
-        }
 
         const child = spawn(process.execPath, [VERIFIER_CLI, ...args], {
             env: { ...process.env, MCP_SECURITY_LAB_WEB: '1' },
@@ -129,6 +177,7 @@ app.post('/api/scan', async (req: Request, res: Response): Promise<void> => {
     }
 });
 
-app.listen(port, () => {
-    console.log(`[MCP Security Lab] Backend server is running on http://localhost:${port}`);
+// Bind to loopback only: this developer demo must not be reachable off-host.
+app.listen(Number(port), '127.0.0.1', () => {
+    console.log(`[MCP Security Lab] Backend server is running on http://127.0.0.1:${port}`);
 });

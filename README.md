@@ -246,8 +246,10 @@ showcase the **Claude-powered Security Consultant** in a browser:
 
 - The **MCP Server Scanner** panel runs the **real** MCP Verifier engine: it POSTs a config to the
   `backend/` `POST /api/scan` endpoint, which shells out to the installed `mcp-security-lab` CLI and
-  returns the genuine JSON report. Enabling `--execute` in the panel starts the target on the
-  backend host, so run it only against servers you trust.
+  returns the genuine JSON report. For safety the endpoint runs **launch-configuration checks only**
+  (it never passes `--execute`, so it never starts the target), the config is strictly rebuilt
+  server-side, CORS is restricted to localhost, and the server binds to `127.0.0.1`. Run a full
+  `--execute` discovery scan with the CLI on a trusted host.
 - The **AI Security Consultant** panel calls the `backend/` service, which talks to **Anthropic's
   Claude** (`claude-opus-4-8`). Set `ANTHROPIC_API_KEY` for the backend.
 - The **System Summary** panel shows illustrative aggregate figures (clearly labelled as sample
