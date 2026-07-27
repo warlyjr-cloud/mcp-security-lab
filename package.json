@@ -1,0 +1,99 @@
+{
+  "name": "cyberconsult-advanced-security-suite",
+  "version": "1.0.0",
+  "description": "CyberConsult Advanced Security Suite (MCP Verifier): evidence-first security checks for local and remote MCP servers.",
+  "type": "module",
+  "bin": {
+    "mcpsl": "./dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    "SECURITY.md",
+    "THREAT_MODEL.md",
+    "docs/RULES.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node scripts/run-tests.js",
+    "test:coverage": "npm run build && c8 node scripts/run-tests.js",
+    "lint": "eslint \"src/**/*.ts\"",
+    "format": "prettier --write .",
+    "scan:fixture": "npm run build && node dist/src/cli.js scan --config examples/insecure-server.json --execute",
+    "prepack": "npm run test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "c8": {
+    "src": [
+      "dist/src"
+    ],
+    "include": [
+      "dist/src/**/*.js"
+    ],
+    "exclude": [
+      "dist/test/**",
+      "dist/fixtures/**"
+    ],
+    "reporter": [
+      "text-summary"
+    ],
+    "check-coverage": true,
+    "lines": 80,
+    "statements": 80,
+    "functions": 78,
+    "branches": 68
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "security",
+    "model-context-protocol",
+    "prompt-injection",
+    "cli",
+    "cyberconsult",
+    "mcp-verifier"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@actions/github": "^9.1.1",
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "blessed": "^0.1.81",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@eslint/js": "^10.0.1",
+    "@types/blessed": "^0.1.27",
+    "@types/node": "^20.19.9",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "c8": "^12.0.0",
+    "dotenv": "^17.4.2",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.2.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.65.0",
+    "yaml": "2.9.0"
+  },
+  "overrides": {
+    "@hono/node-server": "2.0.11"
+  }
+}

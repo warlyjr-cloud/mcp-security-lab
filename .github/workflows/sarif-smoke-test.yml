@@ -1,0 +1,22 @@
+name: SARIF smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  synthetic-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Run local action against the synthetic fixture
+        uses: ./
+        with:
+          config: examples/insecure-server.json
+          execute: "false"
+          upload-sarif: "true"
+          fail-on-findings: "false"

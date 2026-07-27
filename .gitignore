@@ -1,4 +1,9 @@
 node_modules/
+.npm-cache/
 dist/
+coverage/
+*.log
+reports/
+.mcp-security-lab/
 .env
 .DS_Store

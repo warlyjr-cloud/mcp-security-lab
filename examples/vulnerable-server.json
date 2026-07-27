@@ -1,0 +1,11 @@
+{
+  "target": {
+    "command": "node",
+    "args": ["dist/fixtures/honeypot.js"],
+    "cwd": ".."
+  },
+  "policy": {
+    "timeoutMs": 5000,
+    "maxTools": 100
+  }
+}
