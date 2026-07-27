@@ -2,12 +2,26 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CreateMessageRequestSchema,
+  ElicitRequestSchema,
+  ErrorCode,
+  McpError,
+} from "@modelcontextprotocol/sdk/types.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 import { createSanitizedEnvironment, redactArguments, redactUrl } from "./environment.js";
 import { scanTextForInjection } from "./rules/injection.js";
 import { inspectLaunch } from "./rules/launch.js";
+import {
+  elicitationRequestFinding,
+  inspectCredentialPassthrough,
+  inspectLifecycleCapabilities,
+  inspectResourceTemplates,
+  samplingRequestFinding,
+  type ResourceTemplateLike,
+  type ServerCapabilitiesLike,
+} from "./rules/lifecycle.js";
 import { inspectRemoteAuth } from "./rules/oauth.js";
 import { inspectRemote, unauthenticatedAccessFinding } from "./rules/remote.js";
 import {
@@ -26,7 +40,7 @@ import type {
   ToolMetadata,
 } from "./types.js";
 
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 const SEVERITIES: Severity[] = ["info", "low", "medium", "high", "critical"];
 
 // Upper bound on the serialized size of discovery responses. A hostile server
@@ -128,9 +142,37 @@ async function discover(
   sandbox: "docker" | "none",
   fuzz: boolean,
 ): Promise<{ server: ServerMetadata; findings: Finding[]; toolsInvoked: number }> {
-  const client = new Client({ name: "mcp-security-lab", version: VERSION }, { capabilities: {} });
-  const isRemote = config.target.url !== undefined;
   const findings: Finding[] = [];
+
+  // Declare the client-side capabilities a malicious server might try to abuse
+  // (sampling = server-driven model calls, elicitation = server-driven user
+  // prompts). We never fulfil these — the handlers record the attempt and
+  // decline — but declaring them is what lets the server reveal the intent.
+  const client = new Client(
+    { name: "mcp-security-lab", version: VERSION },
+    { capabilities: { sampling: {}, elicitation: {} } },
+  );
+  const isRemote = config.target.url !== undefined;
+
+  client.setRequestHandler(CreateMessageRequestSchema, (request) => {
+    const text = (request.params.messages ?? [])
+      .map((message) => {
+        const content = message.content as { type?: string; text?: string };
+        return content?.type === "text" && typeof content.text === "string" ? content.text : "";
+      })
+      .join("\n");
+    findings.push(...samplingRequestFinding(text));
+    throw new McpError(ErrorCode.InvalidRequest, "Sampling is declined by the security scanner.");
+  });
+
+  client.setRequestHandler(ElicitRequestSchema, (request) => {
+    const message = typeof request.params.message === "string" ? request.params.message : "";
+    findings.push(...elicitationRequestFinding(message));
+    throw new McpError(
+      ErrorCode.InvalidRequest,
+      "Elicitation is declined by the security scanner.",
+    );
+  });
 
   let stdioCommand = config.target.command as string;
   let stdioArgs = config.target.args as string[];
@@ -215,6 +257,12 @@ async function discover(
     }));
     findings.push(...tools.flatMap(inspectTool));
     findings.push(...inspectServerCapabilities(tools));
+    findings.push(...inspectCredentialPassthrough(tools));
+    findings.push(
+      ...inspectLifecycleCapabilities(
+        client.getServerCapabilities() as ServerCapabilitiesLike | undefined,
+      ),
+    );
 
     // We never supply credentials, so a successful remote handshake means the
     // server allowed anonymous access.
@@ -228,6 +276,7 @@ async function discover(
 
     const promptCount = await inspectPrompts(client, config.policy.timeoutMs, findings);
     const resourceCount = await inspectResources(client, config.policy.timeoutMs, findings);
+    await inspectResourceTemplateSurface(client, config.policy.timeoutMs, findings);
 
     let toolsInvoked = 0;
     if (fuzz) {
@@ -326,6 +375,32 @@ async function inspectResources(
       throw error;
     }
     return undefined;
+  }
+}
+
+async function inspectResourceTemplateSurface(
+  client: Client,
+  timeoutMs: number,
+  findings: Finding[],
+): Promise<void> {
+  try {
+    const response = await withTimeout(
+      client.listResourceTemplates(),
+      timeoutMs,
+      "MCP resources/templates/list",
+    );
+    assertMetadataSize(response.resourceTemplates, "resources/templates/list");
+    const templates: ResourceTemplateLike[] = response.resourceTemplates.map((template) => ({
+      ...(typeof template.name === "string" ? { name: template.name } : {}),
+      uriTemplate: template.uriTemplate,
+      ...(typeof template.description === "string" ? { description: template.description } : {}),
+    }));
+    findings.push(...inspectResourceTemplates(templates));
+  } catch (error: unknown) {
+    // A server that does not advertise resource templates is not a finding.
+    if (error instanceof OversizedMetadataError) {
+      throw error;
+    }
   }
 }
 
