@@ -21,7 +21,6 @@ export const ScannerModule: React.FC = () => {
   const { addLog } = useAppState();
   const [command, setCommand] = useState('node');
   const [args, setArgs] = useState('dist/fixtures/insecure-server.js');
-  const [execute, setExecute] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [findings, setFindings] = useState<Finding[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +47,7 @@ export const ScannerModule: React.FC = () => {
       const response = await fetch(`${apiBase}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config, execute }),
+        body: JSON.stringify({ config }),
       });
       const data = await response.json();
       if (response.ok) {
@@ -93,16 +92,11 @@ export const ScannerModule: React.FC = () => {
             disabled={scanning}
           />
         </div>
-        <div className="flex gap-4 items-center">
-          <label className="flex gap-2 items-center text-term-dim">
-            <input
-              type="checkbox"
-              checked={execute}
-              onChange={(e) => setExecute(e.target.checked)}
-              disabled={scanning}
-            />
-            --execute (start the server & discover tools)
-          </label>
+        <div className="flex gap-4 items-center justify-between">
+          <span className="text-term-dim text-xs">
+            Launch-configuration checks (the target is never started by the web UI). For full
+            discovery, run the CLI with <span className="text-term-fg">--execute</span> on a trusted host.
+          </span>
           <button
             type="submit"
             disabled={scanning || !command.trim()}
