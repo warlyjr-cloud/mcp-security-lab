@@ -1,108 +1,137 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppState } from '../store/AppStateContext';
+
+interface Finding {
+  id: string;
+  severity: string;
+  title: string;
+  evidence?: string;
+  location?: string;
+}
+
+const SEVERITY_COLOR: Record<string, string> = {
+  critical: 'text-term-error',
+  high: 'text-term-error',
+  medium: 'text-term-warn',
+  low: 'text-term-dim',
+  info: 'text-term-dim',
+};
 
 export const ScannerModule: React.FC = () => {
   const { addLog } = useAppState();
+  const [command, setCommand] = useState('node');
+  const [args, setArgs] = useState('dist/fixtures/insecure-server.js');
+  const [execute, setExecute] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [target, setTarget] = useState('');
-  const [logs, setLogs] = useState<string[]>([]);
+  const [findings, setFindings] = useState<Finding[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (scanning && progress < 100) {
-      interval = setInterval(() => {
-        setProgress(p => {
-          const next = p + Math.floor(Math.random() * 10) + 1;
-          return next > 100 ? 100 : next;
-        });
-        
-        const mockEvents = [
-          `Scanning port ${Math.floor(Math.random() * 65535)}...`,
-          `Checking SSL/TLS certificates...`,
-          `Running SAST analysis on target...`,
-          `Found potential XSS vulnerability...`,
-          `Analyzing dependencies...`
-        ];
-        setLogs(prev => [...prev, mockEvents[Math.floor(Math.random() * mockEvents.length)]].slice(-20));
-      }, 500);
-    } else if (progress >= 100 && scanning) {
-      setScanning(false);
-      addLog(`Scan completed for ${target}`);
-      setLogs(prev => [...prev, '[SCAN COMPLETE] 4 vulnerabilities found.']);
-    }
-    return () => clearInterval(interval);
-  }, [scanning, progress, target, addLog]);
-
-  const handleStartScan = () => {
-    if (!target) return;
+  const runScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!command.trim()) return;
     setScanning(true);
-    setProgress(0);
-    setLogs([`Starting scan on ${target}...`]);
-    addLog(`Initiated scan on ${target}`);
-  };
+    setError(null);
+    setFindings(null);
+    addLog(`Scanning ${command} ${args}`.trim());
 
-  const handleExport = () => {
-    const data = JSON.stringify({ target, logs, timestamp: new Date().toISOString() }, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `scan_report_${Date.now()}.json`;
-    a.click();
-    addLog(`Exported scan report for ${target}`);
+    const config = {
+      target: {
+        command: command.trim(),
+        args: args.trim() ? args.trim().split(/\s+/) : [],
+        cwd: '.',
+      },
+      policy: { timeoutMs: 5000, maxTools: 100 },
+    };
+
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${apiBase}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config, execute }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setFindings(data.findings ?? []);
+        addLog(`Scan complete: ${(data.findings ?? []).length} findings`);
+      } else {
+        setError(data.error ?? 'Scan failed');
+        addLog(`Scan error: ${data.error}`);
+      }
+    } catch (err: any) {
+      setError(`Connection error: ${err.message}`);
+      addLog(`Scan connection error: ${err.message}`);
+    } finally {
+      setScanning(false);
+    }
   };
 
   return (
     <div className="p-4 h-full flex flex-col gap-4">
-      <h2 className="text-xl font-bold uppercase border-b border-term-dim pb-2">Target Scanner</h2>
+      <h2 className="text-xl font-bold uppercase border-b border-term-dim pb-2">MCP Server Scanner</h2>
 
-      <div className="border border-term-warn text-term-warn text-xs p-2 uppercase tracking-wide">
-        ⚠ Simulation only — this panel generates illustrative output and does not perform a real scan.
-        The real, deterministic engine is the MCP Verifier CLI (`npx mcp-security-lab scan`).
-      </div>
-
-
-      <div className="flex gap-2 items-center">
-        <label className="text-term-dim">TARGET_URL:</label>
-        <input 
-          type="text" 
-          value={target} 
-          onChange={e => setTarget(e.target.value)} 
-          className="bg-transparent border-b border-term-fg outline-none flex-1 placeholder-term-dim/50" 
-          placeholder="https://example.com" 
-          disabled={scanning}
-        />
-        <button 
-          onClick={handleStartScan} 
-          disabled={scanning || !target}
-          className="border border-term-warn text-term-warn px-4 py-1 hover:bg-term-warn hover:text-term-bg disabled:opacity-50"
-        >
-          {scanning ? 'SCANNING...' : 'START SCAN'}
-        </button>
-      </div>
-
-      <div className="mt-4">
-        <div className="text-term-dim mb-1">PROGRESS [{progress}%]</div>
-        <div className="h-4 border border-term-fg w-full p-0.5">
-          <div className="h-full bg-term-warn transition-all duration-300" style={{ width: `${progress}%` }}></div>
+      <form onSubmit={runScan} className="flex flex-col gap-2">
+        <div className="flex gap-2 items-center">
+          <label className="text-term-dim w-24">COMMAND:</label>
+          <input
+            type="text"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            className="bg-transparent border-b border-term-fg outline-none flex-1"
+            placeholder="node"
+            disabled={scanning}
+          />
         </div>
-      </div>
+        <div className="flex gap-2 items-center">
+          <label className="text-term-dim w-24">ARGS:</label>
+          <input
+            type="text"
+            value={args}
+            onChange={(e) => setArgs(e.target.value)}
+            className="bg-transparent border-b border-term-fg outline-none flex-1"
+            placeholder="path/to/server.js"
+            disabled={scanning}
+          />
+        </div>
+        <div className="flex gap-4 items-center">
+          <label className="flex gap-2 items-center text-term-dim">
+            <input
+              type="checkbox"
+              checked={execute}
+              onChange={(e) => setExecute(e.target.checked)}
+              disabled={scanning}
+            />
+            --execute (start the server & discover tools)
+          </label>
+          <button
+            type="submit"
+            disabled={scanning || !command.trim()}
+            className="border border-term-warn text-term-warn px-4 py-1 hover:bg-term-warn hover:text-term-bg disabled:opacity-50"
+          >
+            {scanning ? 'SCANNING...' : 'RUN SCAN'}
+          </button>
+        </div>
+      </form>
 
-      <div className="flex-1 border border-term-dim p-2 overflow-y-auto font-mono text-sm mt-4 bg-term-bg/50">
-        {logs.map((log, i) => (
-          <div key={i} className="text-term-fg">{`> ${log}`}</div>
+      <div className="flex-1 border border-term-dim p-2 overflow-y-auto font-mono text-sm bg-term-bg/50">
+        {error && <div className="text-term-error">{`> ERROR: ${error}`}</div>}
+        {findings && findings.length === 0 && (
+          <div className="text-term-dim">{'> No findings.'}</div>
+        )}
+        {findings?.map((finding, i) => (
+          <div key={i} className="mb-2">
+            <div className={SEVERITY_COLOR[finding.severity] ?? 'text-term-fg'}>
+              {`[${finding.severity.toUpperCase()}] ${finding.id} ${finding.title}`}
+            </div>
+            {finding.location && <div className="text-term-dim pl-4">{`@ ${finding.location}`}</div>}
+            {finding.evidence && <div className="text-term-dim pl-4">{finding.evidence}</div>}
+          </div>
         ))}
-      </div>
-
-      <div className="flex justify-end mt-2">
-        <button 
-          onClick={handleExport} 
-          disabled={progress < 100 || logs.length === 0}
-          className="border border-term-fg px-4 py-1 hover:bg-term-fg hover:text-term-bg disabled:opacity-50"
-        >
-          EXPORT REPORT JSON
-        </button>
+        {!findings && !error && !scanning && (
+          <div className="text-term-dim">
+            {'> Enter a local MCP server command and RUN SCAN. Real, deterministic results from the MCP Verifier engine.'}
+          </div>
+        )}
       </div>
     </div>
   );

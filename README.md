@@ -244,15 +244,18 @@ The `frontend/` (React + Vite) and `backend/` (Node.js + Express) directories co
 **experimental, demo-only** web interface with retro-terminal styling. Its purpose is to
 showcase the **Claude-powered Security Consultant** in a browser:
 
-- The **AI Security Consultant** panel is real — it calls the `backend/` service, which talks to
-  **Anthropic's Claude** (`claude-opus-4-8`). Set `ANTHROPIC_API_KEY` for the backend and run
-  `npm run dev` in `backend/`, then `npm run dev` in `frontend/`.
-- The **Target Scanner** and **System Summary** panels are **simulations** — they render
-  illustrative output and do **not** run a real scan. For real, deterministic auditing use the
-  MCP Verifier CLI documented above.
+- The **MCP Server Scanner** panel runs the **real** MCP Verifier engine: it POSTs a config to the
+  `backend/` `POST /api/scan` endpoint, which shells out to the installed `mcp-security-lab` CLI and
+  returns the genuine JSON report. Enabling `--execute` in the panel starts the target on the
+  backend host, so run it only against servers you trust.
+- The **AI Security Consultant** panel calls the `backend/` service, which talks to **Anthropic's
+  Claude** (`claude-opus-4-8`). Set `ANTHROPIC_API_KEY` for the backend.
+- The **System Summary** panel shows illustrative aggregate figures (clearly labelled as sample
+  data), not a live rollup.
 
-The web UI is not required to use MCP Verifier and is not published to npm. It is included as a
-proof-of-concept of Claude-assisted MCP security tooling and is under active development.
+Run `npm install && npm run dev` in `backend/`, then `npm install && npm run dev` in `frontend/`.
+The web UI is not required to use MCP Verifier and is not published to npm; it is a proof-of-concept
+of Claude-assisted MCP security tooling and is under active development.
 
 ## GitHub Action
 

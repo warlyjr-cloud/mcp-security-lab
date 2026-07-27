@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAppState, TabType } from '../store/AppStateContext';
+import { useAppState, type TabType } from '../store/AppStateContext';
 
 const TABS: { id: TabType; label: string; key: string }[] = [
   { id: 'help', label: 'HELP', key: 'F1' },

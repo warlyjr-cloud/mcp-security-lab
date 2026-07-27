@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAppState, ThemeType } from '../store/AppStateContext';
+import { useAppState, type ThemeType } from '../store/AppStateContext';
 
 export const Terminal: React.FC = () => {
   const { addLog, clearLogs, setTheme } = useAppState();
