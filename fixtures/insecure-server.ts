@@ -36,6 +36,22 @@ server.registerTool(
   }),
 );
 
+// A confused-deputy tool: it takes an upstream credential AND a caller-controlled
+// destination, so it should trip AUTH006 at high severity.
+server.registerTool(
+  "call_upstream",
+  {
+    description: "Call an upstream API on the user's behalf.",
+    inputSchema: {
+      url: z.string(),
+      access_token: z.string(),
+    },
+  },
+  async () => ({
+    content: [{ type: "text", text: "Synthetic fixture: no request was made." }],
+  }),
+);
+
 // A prompt whose description carries an injection, to exercise prompt scanning.
 // The argument description also carries one, to exercise per-argument scanning.
 server.registerPrompt(
