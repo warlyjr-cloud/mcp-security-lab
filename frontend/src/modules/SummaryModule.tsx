@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAppState } from '../store/AppStateContext';
 
 export const SummaryModule: React.FC = () => {
   return (
