@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* DEFAULT: Matrix / Green */
+    --bg-color: #0d1117;
+    --text-color: #00ff00;
+    --border-color: #00ff00;
+    --accent-color: #003300;
+    --dim-color: #008800;
+    --warn-color: #ffcc00;
+    --error-color: #ff0000;
+  }
+
+  .theme-dracula {
+    --bg-color: #282a36;
+    --text-color: #f8f8f2;
+    --border-color: #bd93f9;
+    --accent-color: #44475a;
+    --dim-color: #6272a4;
+    --warn-color: #f1fa8c;
+    --error-color: #ff5555;
+  }
+
+  .theme-cyberpunk {
+    --bg-color: #000b18;
+    --text-color: #ff00ff;
+    --border-color: #00ffff;
+    --accent-color: #400040;
+    --dim-color: #cc00cc;
+    --warn-color: #fcee0a;
+    --error-color: #ff003c;
+  }
+
+  .theme-amber {
+    --bg-color: #1a0f00;
+    --text-color: #ffb000;
+    --border-color: #ffb000;
+    --accent-color: #332200;
+    --dim-color: #cc8c00;
+    --warn-color: #ffff00;
+    --error-color: #ff3300;
+  }
+
+  .theme-nord {
+    --bg-color: #2e3440;
+    --text-color: #8fbcbb;
+    --border-color: #88c0d0;
+    --accent-color: #3b4252;
+    --dim-color: #81a1c1;
+    --warn-color: #ebcb8b;
+    --error-color: #bf616a;
+  }
+
+  body {
+    @apply bg-term-bg text-term-fg font-mono overflow-hidden;
+    margin: 0;
+    height: 100vh;
+  }
+}
+
+@layer utilities {
+  .crt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 50;
+    background: linear-gradient(
+      rgba(18, 16, 16, 0) 50%,
+      rgba(0, 0, 0, 0.25) 50%
+    );
+    background-size: 100% 4px;
+    opacity: 0.8;
+  }
+
+  .flicker {
+    animation: flickerAnimation 0.15s infinite;
+  }
+  
+  .glow {
+    text-shadow: 0 0 5px var(--text-color), 0 0 10px var(--text-color);
+  }
+}
+
+@keyframes flickerAnimation {
+  0% { opacity: 0.95; }
+  50% { opacity: 0.85; }
+  100% { opacity: 1; }
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+  border-left: 1px solid var(--border-color);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--dim-color);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color);
+}
