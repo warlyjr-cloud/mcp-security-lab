@@ -1,8 +1,28 @@
 import assert from "node:assert/strict";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { scan } from "../src/scanner.js";
+
+test("without --execute the scanner never spawns the target process", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "mcp-safety-"));
+  const sentinel = join(directory, "spawned.txt");
+  await scan(
+    {
+      target: {
+        command: process.execPath,
+        args: ["-e", `require('fs').writeFileSync(${JSON.stringify(sentinel)}, 'x')`],
+        cwd: directory,
+      },
+      policy: { timeoutMs: 5_000, maxTools: 10 },
+    },
+    false,
+  );
+  // If the launcher had run, the sentinel would exist. It must not.
+  assert.equal(existsSync(sentinel), false);
+});
 
 test("scanner discovers metadata without invoking fixture tools", async () => {
   const report = await scan(
@@ -22,12 +42,17 @@ test("scanner discovers metadata without invoking fixture tools", async () => {
 
   assert.equal(report.execution.connected, true);
   assert.equal(report.execution.toolsInvoked, 0);
-  assert.equal(report.server?.toolCount, 2);
+  assert.equal(report.server?.toolCount, 3);
   assert.equal(report.server?.promptCount, 1);
   assert.equal(report.server?.resourceCount, 1);
   assert.ok(report.findings.some((finding) => finding.id === "TOOL003"));
   assert.ok(report.findings.some((finding) => finding.id === "TOOL006"));
   assert.ok(report.findings.some((finding) => finding.id === "TOOL011"));
+  // The confused-deputy tool (credential + destination) must trip AUTH006 (high).
+  const auth006 = report.findings.find((finding) => finding.id === "AUTH006");
+  assert.ok(auth006);
+  assert.equal(auth006?.severity, "high");
+  assert.equal(auth006?.location, "tool:call_upstream");
   // Injection hidden in a prompt description must be caught, not only tool text.
   assert.ok(
     report.findings.some(

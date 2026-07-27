@@ -174,6 +174,11 @@ Findings carry a `confidence` rating (`low`/`medium`/`high`). Pass `--min-confid
 (or `high`) to drop lower-confidence findings from the report and the exit code; findings the
 scanner does not confidence-rate are always kept, so raising the bar never hides an unrated result.
 
+Pass `--baseline <report.json>` (a prior `--format json` report) to close the remediation loop:
+after fixing a server, re-scan against the baseline to see exactly which findings were **resolved**,
+which **remain**, and whether any were **introduced**. A newly introduced finding fails the exit
+code, so `--baseline` doubles as a regression gate in CI.
+
 Exit codes:
 
 - `0`: scan completed without high or critical findings

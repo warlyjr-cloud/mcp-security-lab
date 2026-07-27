@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "./config.js";
+import { diffReports, renderDiff } from "./diff.js";
 import { reportAsJson, reportAsSarif, reportAsText, reportAsMarkdown } from "./reporter.js";
 import { renderDashboard } from "./reporter/dashboard.js";
 import { generateRemediationPlan } from "./remediator/ai-fix.js";
@@ -24,6 +25,7 @@ export interface CliOptions {
   autoFix: boolean;
   firewallPath?: string;
   minConfidence?: Confidence;
+  baselinePath?: string;
 }
 
 const CONFIDENCE_RANK: Record<Confidence, number> = { low: 0, medium: 1, high: 2 };
@@ -55,7 +57,8 @@ function usage(): string {
     "Usage:",
     "  mcp-security-lab scan --config <path> [--execute] [--sandbox docker|none] [--fuzz]",
     "            [--ai-fuzz] [--format text|json|sarif|markdown|dashboard] [--output <path>]",
-    "            [--min-confidence low|medium|high] [--auto-fix] [--generate-firewall <path>]",
+    "            [--min-confidence low|medium|high] [--baseline <report.json>]",
+    "            [--auto-fix] [--generate-firewall <path>]",
     "",
     "Safety:",
     "  Without --execute, only the launch configuration is inspected.",
@@ -81,6 +84,7 @@ function parseArgs(args: string[]): CliOptions {
   let outputPath: string | undefined;
   let sandbox: "docker" | "none" = "none";
   let minConfidence: Confidence | undefined;
+  let baselinePath: string | undefined;
 
   for (let index = 1; index < args.length; index += 1) {
     const argument = args[index];
@@ -106,7 +110,8 @@ function parseArgs(args: string[]): CliOptions {
       argument === "--output" ||
       argument === "--sandbox" ||
       argument === "--generate-firewall" ||
-      argument === "--min-confidence"
+      argument === "--min-confidence" ||
+      argument === "--baseline"
     ) {
       const value = args[index + 1];
       if (value === undefined) {
@@ -131,6 +136,8 @@ function parseArgs(args: string[]): CliOptions {
         } else {
           throw new Error("--min-confidence must be low, medium, or high.");
         }
+      } else if (argument === "--baseline") {
+        baselinePath = value;
       } else if (argument === "--format") {
         if (
           value === "text" ||
@@ -164,6 +171,7 @@ function parseArgs(args: string[]): CliOptions {
     ...(firewallPath === undefined ? {} : { firewallPath }),
     ...(outputPath === undefined ? {} : { outputPath }),
     ...(minConfidence === undefined ? {} : { minConfidence }),
+    ...(baselinePath === undefined ? {} : { baselinePath }),
   };
 }
 
@@ -216,6 +224,17 @@ async function main(): Promise<void> {
     await mkdir(dirname(absoluteOutputPath), { recursive: true });
     await writeFile(absoluteOutputPath, output, "utf8");
     process.stdout.write(`Report written to ${absoluteOutputPath}\n`);
+  }
+
+  if (options.baselinePath !== undefined) {
+    const baseline = JSON.parse(
+      await readFile(resolve(options.baselinePath), "utf8"),
+    ) as ScanReport;
+    const diff = diffReports(baseline, report);
+    process.stderr.write(renderDiff(diff));
+    if (diff.introduced.length > 0) {
+      process.exitCode = 2; // a regression against the baseline fails the gate
+    }
   }
 
   if (report.summary.critical > 0 || report.summary.high > 0) {
