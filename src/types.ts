@@ -1,5 +1,7 @@
 export type Severity = "info" | "low" | "medium" | "high" | "critical";
 
+export type Confidence = "low" | "medium" | "high";
+
 export interface Finding {
   id: string;
   severity: Severity;
@@ -12,6 +14,8 @@ export interface Finding {
   cwe?: string;
   /** OWASP Top 10 for LLM Applications identifier, e.g. "LLM01". */
   owasp?: string;
+  /** Detection confidence, for downstream filtering and ranking. */
+  confidence?: Confidence;
   /** External references (spec sections, advisories) for the finding. */
   references?: string[];
 }
