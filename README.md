@@ -4,16 +4,12 @@
 [![npm version](https://badge.fury.io/js/mcp-security-lab.svg)](https://badge.fury.io/js/mcp-security-lab)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**CyberConsult Advanced Security Suite** (formerly MCP Security Lab) is an evidence-first
-security toolkit for local and remote Model Context Protocol (MCP) servers. Its core engine,
-**MCP Verifier**, audits how an MCP server is launched and what it advertises during the MCP
-handshake — without requiring an LLM or API key for its deterministic checks.
+**CyberConsult Advanced Security Suite** nasceu como um projeto focado chamado *MCP Security Lab*, atuando originalmente apenas como um verificador de segurança de linha de comando para servidores Model Context Protocol (MCP). 
 
-> The GitHub repository, npm package, and CLI binary keep their existing identifiers
-> (`mcp-security-lab`, `mcpsl`) during this rebrand so existing installs, CI pipelines, and the
-> GitHub Action referenced below keep working without changes. "CyberConsult Advanced Security
-> Suite" and "MCP Verifier" are the product's new brand names layered on top of that unchanged
-> technical foundation.
+### A Evolução do Projeto
+O que começou como um laboratório de segurança de MCP evoluiu significativamente. Hoje, o sistema se transformou no **CyberConsult Advanced Security Suite**, uma aplicação web Full-Stack completa (React + Node.js) com uma interface retro-futurista de Terminal (TUI). O projeto agora abrange não apenas a verificação de MCP, mas simuladores de escaneamento de portas, análise de feed de ameaças (CVEs), integração direta com IA (Google Gemini) para mitigação de vulnerabilidades, e auditoria de conformidade (OWASP, NIST).
+
+A aplicação continuará evoluindo para se tornar uma plataforma definitiva de DevSecOps e inteligência de cibersegurança. O núcleo original de verificação (MCP Verifier) continua operando sob o capô como parte desse grande ecossistema em constante expansão.
 
 > **MCP Verifier automatically audits Model Context Protocol (MCP) servers for prompt injections, context window exhaustion, and unsafe tool schemas without requiring an LLM or API keys. It runs natively in CI/CD pipelines (SARIF 2.1.0) and supports Docker Sandboxing for safe active probing.**
 

@@ -5,3 +5,5 @@ coverage/
 *.log
 reports/
 .mcp-security-lab/
+.env
+.DS_Store
