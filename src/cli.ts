@@ -2,6 +2,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { loadConfig } from "./config.js";
 import { reportAsJson, reportAsSarif, reportAsText, reportAsMarkdown } from "./reporter.js";
@@ -10,6 +11,7 @@ import { generateRemediationPlan } from "./remediator/ai-fix.js";
 import { generateFirewallPolicy } from "./firewall/generator.js";
 import { scan } from "./scanner.js";
 import { writeFileSync } from "node:fs";
+import type { Confidence, ScanReport, Severity } from "./types.js";
 
 export interface CliOptions {
   configPath: string;
@@ -21,14 +23,39 @@ export interface CliOptions {
   aiFuzz: boolean;
   autoFix: boolean;
   firewallPath?: string;
+  minConfidence?: Confidence;
+}
+
+const CONFIDENCE_RANK: Record<Confidence, number> = { low: 0, medium: 1, high: 2 };
+const SEVERITIES: Severity[] = ["info", "low", "medium", "high", "critical"];
+
+/**
+ * Drop findings whose confidence is below the threshold. Findings that carry no
+ * confidence are unscored and always kept, so raising the bar never hides a
+ * finding the scanner did not rate. The summary is recomputed to match.
+ */
+export function applyConfidenceFilter(report: ScanReport, min: Confidence): ScanReport {
+  const threshold = CONFIDENCE_RANK[min];
+  const findings = report.findings.filter(
+    (finding) =>
+      finding.confidence === undefined || CONFIDENCE_RANK[finding.confidence] >= threshold,
+  );
+  const summary = Object.fromEntries(SEVERITIES.map((severity) => [severity, 0])) as Record<
+    Severity,
+    number
+  >;
+  for (const finding of findings) {
+    summary[finding.severity] += 1;
+  }
+  return { ...report, findings, summary };
 }
 
 function usage(): string {
   return [
     "Usage:",
-    "  mcpsl scan --config <path> [--execute] [--sandbox docker|none] [--fuzz] [--ai-fuzz]",
-    "            [--format text|json|sarif|markdown|dashboard] [--output <path>]",
-    "            [--auto-fix] [--generate-firewall <path>]",
+    "  mcp-security-lab scan --config <path> [--execute] [--sandbox docker|none] [--fuzz]",
+    "            [--ai-fuzz] [--format text|json|sarif|markdown|dashboard] [--output <path>]",
+    "            [--min-confidence low|medium|high] [--auto-fix] [--generate-firewall <path>]",
     "",
     "Safety:",
     "  Without --execute, only the launch configuration is inspected.",
@@ -53,6 +80,7 @@ function parseArgs(args: string[]): CliOptions {
   let format: "text" | "json" | "sarif" | "markdown" | "dashboard" = "text";
   let outputPath: string | undefined;
   let sandbox: "docker" | "none" = "none";
+  let minConfidence: Confidence | undefined;
 
   for (let index = 1; index < args.length; index += 1) {
     const argument = args[index];
@@ -77,7 +105,8 @@ function parseArgs(args: string[]): CliOptions {
       argument === "--format" ||
       argument === "--output" ||
       argument === "--sandbox" ||
-      argument === "--generate-firewall"
+      argument === "--generate-firewall" ||
+      argument === "--min-confidence"
     ) {
       const value = args[index + 1];
       if (value === undefined) {
@@ -96,6 +125,12 @@ function parseArgs(args: string[]): CliOptions {
         }
       } else if (argument === "--generate-firewall") {
         firewallPath = value;
+      } else if (argument === "--min-confidence") {
+        if (value === "low" || value === "medium" || value === "high") {
+          minConfidence = value;
+        } else {
+          throw new Error("--min-confidence must be low, medium, or high.");
+        }
       } else if (argument === "--format") {
         if (
           value === "text" ||
@@ -128,6 +163,7 @@ function parseArgs(args: string[]): CliOptions {
     sandbox,
     ...(firewallPath === undefined ? {} : { firewallPath }),
     ...(outputPath === undefined ? {} : { outputPath }),
+    ...(minConfidence === undefined ? {} : { minConfidence }),
   };
 }
 
@@ -140,7 +176,11 @@ async function main(): Promise<void> {
     config.policy.aiFuzz = true;
   }
 
-  const report = await scan(config, options.execute, options.sandbox, options.fuzz);
+  const rawReport = await scan(config, options.execute, options.sandbox, options.fuzz);
+  const report =
+    options.minConfidence === undefined
+      ? rawReport
+      : applyConfidenceFilter(rawReport, options.minConfidence);
 
   if (options.firewallPath) {
     const firewall = generateFirewallPolicy(report);
@@ -183,8 +223,13 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  process.stderr.write(`Error: ${message}\n`);
-  process.exitCode = 1;
-});
+const invokedDirectly =
+  process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (invokedDirectly) {
+  main().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Error: ${message}\n`);
+    process.exitCode = 1;
+  });
+}
