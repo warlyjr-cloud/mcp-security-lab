@@ -40,6 +40,24 @@ MCP Verifier is positioned differently:
   composite GitHub Action ships in-repo (see below).
 - **Safety-conscious active probing.** Optional fuzzing (`--fuzz`) only runs inside a
   network-isolated Docker sandbox, never against a live/trusted server on the host.
+- **Lifecycle-aware.** Beyond static text, it detects MCP-specific attack classes — rug pulls
+  (`listChanged`), confused-deputy token passthrough, SSRF/traversal in resource templates, and
+  server-initiated sampling/elicitation. See [SPEC_COVERAGE.md](SPEC_COVERAGE.md).
+
+| Capability                                            | MCP Verifier | Typical MCP tooling   |
+| ----------------------------------------------------- | ------------ | --------------------- |
+| Deterministic, no LLM/API key required                | ✅           | often requires an LLM |
+| Prompt-injection scanning (Unicode-evasion resilient) | ✅           | partial               |
+| CWE + OWASP-LLM taxonomy in output                    | ✅           | rare                  |
+| SARIF 2.1.0 / GitHub code scanning                    | ✅           | rare                  |
+| Lifecycle attacks (rug pull, sampling, elicitation)   | ✅           | ✗                     |
+| Confused-deputy / token-passthrough detection         | ✅           | ✗                     |
+| OAuth 2.1 posture (RFC 9728 / 8414) + SSRF guard      | ✅           | ✗                     |
+| Safe active probing in a network-isolated sandbox     | ✅           | varies                |
+| Optional Claude-powered remediation                   | ✅           | varies                |
+
+The comparison describes the class of trust-metadata-only or LLM-required scanners the project was
+built to improve on; it is not a claim about any specific named tool.
 
 ## MCP Security Lab and the Claude for OSS Incubator
 
@@ -151,6 +169,10 @@ node dist/src/cli.js scan --config examples/insecure-server.json --execute --out
 Sensitive values supplied through common arguments such as `--token`, `--api-key`,
 `--password`, and `--secret` are redacted from every report. Avoid credentials in command
 arguments entirely when the target supports a safer authentication mechanism.
+
+Findings carry a `confidence` rating (`low`/`medium`/`high`). Pass `--min-confidence medium`
+(or `high`) to drop lower-confidence findings from the report and the exit code; findings the
+scanner does not confidence-rate are always kept, so raising the bar never hides an unrated result.
 
 Exit codes:
 

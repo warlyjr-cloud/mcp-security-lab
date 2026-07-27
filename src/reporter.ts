@@ -163,6 +163,7 @@ export function reportAsSarif(
             scannerLocation: finding.location ?? "scan",
             ...(finding.cwe === undefined ? {} : { cwe: finding.cwe }),
             ...(finding.owasp === undefined ? {} : { owasp: finding.owasp }),
+            ...(finding.confidence === undefined ? {} : { confidence: finding.confidence }),
           },
         })),
       },
@@ -193,6 +194,9 @@ export function reportAsText(report: ScanReport): string {
     const taxonomy = [finding.cwe, finding.owasp].filter(Boolean).join(", ");
     if (taxonomy !== "") {
       lines.push(`  Taxonomy: ${taxonomy}`);
+    }
+    if (finding.confidence !== undefined) {
+      lines.push(`  Confidence: ${finding.confidence}`);
     }
     if (finding.location !== undefined) {
       lines.push(`  Location: ${finding.location}`);
