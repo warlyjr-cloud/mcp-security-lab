@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import Anthropic from '@anthropic-ai/sdk';
 
 dotenv.config();
 
@@ -11,14 +11,19 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-const apiKey = process.env.GEMINI_API_KEY;
+const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) {
-    console.error("GEMINI_API_KEY environment variable is missing.");
+    console.error('ANTHROPIC_API_KEY environment variable is missing.');
 }
 
-const ai = new GoogleGenAI({ apiKey: apiKey || 'MISSING_API_KEY' });
+const anthropic = new Anthropic({ apiKey: apiKey || 'MISSING_API_KEY' });
 
-app.post('/api/gemini/consult', async (req: Request, res: Response): Promise<void> => {
+app.post('/api/consult', async (req: Request, res: Response): Promise<void> => {
+    if (!apiKey) {
+        res.status(503).json({ error: 'ANTHROPIC_API_KEY is not configured on the server.' });
+        return;
+    }
+
     try {
         const { prompt, moduleContext } = req.body;
 
@@ -27,27 +32,31 @@ app.post('/api/gemini/consult', async (req: Request, res: Response): Promise<voi
             return;
         }
 
-        const systemInstruction = `You are the AI Consultant for the CyberConsult Advanced Security Suite.
-        You communicate in a professional, concise, hacker/cybersecurity expert persona.
-        Keep answers highly technical, structured, and use markdown.
-        Context: ${moduleContext || 'General Cybersecurity Consultation'}`;
+        const systemInstruction = `You are the AI Security Consultant for the MCP Security Lab suite.
+You communicate in a professional, concise, hacker/cybersecurity expert persona.
+Keep answers highly technical, structured, and use markdown.
+Context: ${moduleContext || 'General Cybersecurity Consultation'}`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                systemInstruction: systemInstruction,
-                temperature: 0.2
-            }
+        const response = await anthropic.messages.create({
+            model: 'claude-opus-4-8',
+            max_tokens: 1024,
+            system: systemInstruction,
+            messages: [{ role: 'user', content: prompt }],
         });
 
-        res.json({ result: response.text });
-    } catch (error: any) {
-        console.error('Error calling Gemini API:', error);
-        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+        const content = response.content[0];
+        if (!content || content.type !== 'text') {
+            throw new Error('Unexpected response type from Anthropic API.');
+        }
+
+        res.json({ result: content.text });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Error calling Anthropic API:', message);
+        res.status(500).json({ error: 'Internal Server Error', details: message });
     }
 });
 
 app.listen(port, () => {
-    console.log(`[CyberConsult] Backend server is running on http://localhost:${port}`);
+    console.log(`[MCP Security Lab] Backend server is running on http://localhost:${port}`);
 });

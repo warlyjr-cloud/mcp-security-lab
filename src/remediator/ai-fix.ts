@@ -41,7 +41,7 @@ Ensure the output is pure Markdown and highly professional.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-opus-4-8",
       max_tokens: 4096,
       system: "You are an expert AppSec engineer. Output only Markdown.",
       messages: [{ role: "user", content: prompt }],

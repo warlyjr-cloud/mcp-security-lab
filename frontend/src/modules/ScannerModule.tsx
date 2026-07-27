@@ -56,7 +56,13 @@ export const ScannerModule: React.FC = () => {
   return (
     <div className="p-4 h-full flex flex-col gap-4">
       <h2 className="text-xl font-bold uppercase border-b border-term-dim pb-2">Target Scanner</h2>
-      
+
+      <div className="border border-term-warn text-term-warn text-xs p-2 uppercase tracking-wide">
+        ⚠ Simulation only — this panel generates illustrative output and does not perform a real scan.
+        The real, deterministic engine is the MCP Verifier CLI (`npx mcp-security-lab scan`).
+      </div>
+
+
       <div className="flex gap-2 items-center">
         <label className="text-term-dim">TARGET_URL:</label>
         <input 

@@ -5,7 +5,12 @@ export const SummaryModule: React.FC = () => {
   return (
     <div className="p-4 h-full flex flex-col gap-4">
       <h2 className="text-xl font-bold uppercase border-b border-term-dim pb-2 mb-4">System Summary</h2>
-      
+
+      <div className="border border-term-warn text-term-warn text-xs p-2 uppercase tracking-wide">
+        ⚠ Sample data — illustrative dashboard figures, not a live scan result.
+      </div>
+
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="border border-term-error p-4 flex flex-col items-center justify-center glow">
           <span className="text-term-error font-bold text-4xl">12</span>

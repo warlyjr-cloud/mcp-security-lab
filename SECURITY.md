@@ -1,6 +1,6 @@
 # Security model
 
-CyberConsult Advanced Security Suite (MCP Verifier) treats a configured MCP server as untrusted
+MCP Security Lab (MCP Verifier) treats a configured MCP server as untrusted
 code.
 
 ## What it protects

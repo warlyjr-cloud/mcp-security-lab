@@ -134,7 +134,7 @@ test("reportAsMarkdown reports grade A and no findings when the report is clean"
     findings: [],
   };
   const markdown = reportAsMarkdown(clean);
-  assert.match(markdown, /# CyberConsult Advanced Security Suite — MCP Verifier Report/);
+  assert.match(markdown, /# MCP Security Lab — MCP Verifier Report/);
   assert.match(markdown, /Grade_A-brightgreen/);
   assert.match(markdown, /No security findings were detected/);
 });

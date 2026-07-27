@@ -1,6 +1,6 @@
 # Threat model
 
-This document states what CyberConsult Advanced Security Suite (MCP Verifier) treats as trusted,
+This document states what MCP Security Lab (MCP Verifier) treats as trusted,
 what it treats as hostile, and what it does and does not guarantee. It complements
 [SECURITY.md](SECURITY.md), which covers vulnerability reporting.
 

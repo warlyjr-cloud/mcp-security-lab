@@ -118,7 +118,7 @@ test("--format markdown emits a markdown report", () => {
     "--format",
     "markdown",
   ]);
-  assert.match(result.stdout, /^# CyberConsult Advanced Security Suite/);
+  assert.match(result.stdout, /^# MCP Security Lab/);
 });
 
 test("--output writes the report to a file instead of stdout", () => {
@@ -151,7 +151,7 @@ test("--generate-firewall writes a firewall policy alongside the report", () => 
   ]);
   assert.match(result.stdout, /Firewall policy generated at/);
   const policy = JSON.parse(readFileSync(firewallPath, "utf8")) as { generatedBy: string };
-  assert.equal(policy.generatedBy, "CyberConsult Advanced Security Suite (MCP Verifier)");
+  assert.equal(policy.generatedBy, "MCP Security Lab (MCP Verifier)");
 });
 
 test("--sandbox none is accepted explicitly", () => {
