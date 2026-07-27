@@ -64,7 +64,7 @@
     "model-context-protocol",
     "prompt-injection",
     "cli",
-    "cyberconsult",
+    "claude",
     "mcp-verifier"
   ],
   "license": "Apache-2.0",
