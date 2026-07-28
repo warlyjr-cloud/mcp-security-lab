@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -40,7 +42,12 @@ import type {
   ToolMetadata,
 } from "./types.js";
 
-const VERSION = "1.1.0";
+// Single source of truth for the scanner version: the package manifest. npm
+// always ships package.json in the tarball, so this resolves both in dev
+// (<root>/dist/src) and when installed (node_modules/mcp-security-lab/dist/src).
+const { version: VERSION } = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as { version: string };
 const SEVERITIES: Severity[] = ["info", "low", "medium", "high", "critical"];
 
 // Upper bound on the serialized size of discovery responses. A hostile server
