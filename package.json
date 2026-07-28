@@ -24,6 +24,7 @@
     "lint": "eslint \"src/**/*.ts\"",
     "format": "prettier --write .",
     "scan:fixture": "npm run build && node dist/src/cli.js scan --config examples/insecure-server.json --execute",
+    "benchmark": "npm run build && node scripts/benchmark.js",
     "prepack": "npm run test",
     "prepare": "husky"
   },

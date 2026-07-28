@@ -306,6 +306,43 @@ POSIX-oriented; Windows paths are translated for bind-mounts but Docker Desktop 
 Remote scanning uses the Streamable HTTP transport by default (SSE is available for legacy servers).
 See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
 
+## Detection benchmark
+
+A small, labeled conformance corpus (`corpus/manifest.json`) pins detection quality. Each entry
+lists the rule ids that **must** fire (`expect`) and those that **must not** (`forbid`); the same
+labels gate CI (`test/corpus.test.ts`). Run it locally:
+
+```bash
+npm run benchmark
+```
+
+```text
+MCP Verifier detection benchmark
+  [OK] vulnerable
+  [OK] clean
+  Precision: 100.0%
+  Recall:    100.0%
+```
+
+The corpus is intentionally small and synthetic; it is a regression gate and a starting point for a
+community-maintained conformance suite (see roadmap), not a claim of exhaustive coverage.
+
+## Remediation loop (Claude-assisted)
+
+The Claude features and the baseline diff compose into a fix-and-verify loop:
+
+```bash
+# 1. Scan and save a baseline
+npx mcp-security-lab scan --config mcp.json --execute --format json --output before.json
+# 2. Generate a Claude-authored remediation plan for the high/critical findings
+npx mcp-security-lab scan --config mcp.json --execute --auto-fix   # writes MCP_REMEDIATION.md
+# 3. Apply the fixes to your server, then re-scan against the baseline
+npx mcp-security-lab scan --config mcp.json --execute --baseline before.json
+#    -> prints which findings were resolved / remain / were introduced
+```
+
+Step 3 fails the exit code if a fix introduced a new finding, so the loop is safe to run in CI.
+
 ## Roadmap
 
 1. Windows Sandbox execution adapter (Docker container adapter shipped).
