@@ -181,9 +181,9 @@ test("--auto-fix skips AI remediation gracefully without an API key", () => {
     ["scan", "--config", resolve("examples/insecure-server.json"), "--auto-fix"],
     { cwd: directory, env: { ...process.env, ANTHROPIC_API_KEY: "" } },
   );
-  assert.match(result.stdout, /AI Remediation Plan saved to MCP_REMEDIATION.md/);
+  assert.match(result.stdout, /Verified remediation saved to MCP_REMEDIATION.md/);
   const plan = readFileSync(join(directory, "MCP_REMEDIATION.md"), "utf8");
-  assert.match(plan, /Skipping AI Remediation: ANTHROPIC_API_KEY environment variable is missing/);
+  assert.match(plan, /Skipping verified remediation: ANTHROPIC_API_KEY is not set/);
 });
 
 test("exit code is 2 when the scan finds high or critical issues", () => {
