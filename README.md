@@ -306,6 +306,24 @@ POSIX-oriented; Windows paths are translated for bind-mounts but Docker Desktop 
 Remote scanning uses the Streamable HTTP transport by default (SSE is available for legacy servers).
 See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
 
+## Real-world validation
+
+MCP Verifier is exercised against real, well-known public MCP servers — not only its own fixtures.
+`npm run scan:registry` audits the servers in `corpus/registry.json` and writes
+[FINDINGS.md](FINDINGS.md). A run against three official reference servers:
+
+| Server                       | Tools | high | med | low | Notable                                                           |
+| ---------------------------- | ----- | ---- | --- | --- | ----------------------------------------------------------------- |
+| `server-everything`          | 15    | 0    | 24  | 15  | MUT001 (mutable surface), TOOL004/009/010 hygiene                 |
+| `server-memory`              | 9     | 1    | 13  | 9   | **TOOL011** — exposes both broad read and destructive write tools |
+| `server-sequential-thinking` | 1     | 0    | 3   | 1   | MUT001, schema hygiene                                            |
+
+These are **hygiene** findings, not confirmed vulnerabilities — but they are real, actionable signal
+from real servers, and they validate the engine outside synthetic fixtures. Notably the lifecycle
+rule `MUT001` fired on all three (each declares `listChanged`), and `server-memory` surfaced a
+genuine least-privilege observation. Reproduce with `npm run scan:registry` (use `--sandbox docker`
+for untrusted servers).
+
 ## Detection benchmark
 
 A small, labeled conformance corpus (`corpus/manifest.json`) pins detection quality. Each entry

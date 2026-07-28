@@ -1,0 +1,20 @@
+{
+  "description": "Well-known public MCP servers to audit with `npm run scan:registry`. Running this executes third-party code via npx — use --sandbox docker or a disposable VM for untrusted servers. The committed FINDINGS.md was produced by an actual run against these reference servers.",
+  "servers": [
+    {
+      "name": "@modelcontextprotocol/server-everything",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-memory",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-sequential-thinking",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    }
+  ]
+}
