@@ -43,7 +43,8 @@ MCP Verifier is positioned differently:
   network-isolated Docker sandbox, never against a live/trusted server on the host.
 - **Lifecycle-aware.** Beyond static text, it detects MCP-specific attack classes — rug pulls
   (`listChanged`), confused-deputy token passthrough, SSRF/traversal in resource templates, and
-  server-initiated sampling/elicitation. See [SPEC_COVERAGE.md](SPEC_COVERAGE.md).
+  server-initiated sampling/elicitation. See [SPEC_COVERAGE.md](SPEC_COVERAGE.md) for the spec-to-rule
+  map and [docs/MCP_ATTACK_CLASSES.md](docs/MCP_ATTACK_CLASSES.md) for a full explainer of each class.
 
 | Capability                                            | MCP Verifier | Typical MCP tooling   |
 | ----------------------------------------------------- | ------------ | --------------------- |
