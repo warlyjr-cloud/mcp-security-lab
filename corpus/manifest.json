@@ -1,0 +1,26 @@
+{
+  "description": "Labeled conformance corpus. `expect` rule ids must fire; `forbid` rule ids must not. Used by scripts/benchmark.js and test/corpus.test.ts to measure precision and recall and to gate regressions.",
+  "entries": [
+    {
+      "name": "vulnerable",
+      "fixture": "dist/fixtures/insecure-server.js",
+      "expect": ["TOOL003", "TOOL006", "TOOL011", "AUTH006"],
+      "forbid": []
+    },
+    {
+      "name": "clean",
+      "fixture": "dist/fixtures/clean-server.js",
+      "expect": [],
+      "forbid": [
+        "TOOL003",
+        "TOOL006",
+        "TOOL011",
+        "TOOL012",
+        "AUTH006",
+        "RES001",
+        "SAMPLE001",
+        "ELICIT001"
+      ]
+    }
+  ]
+}
