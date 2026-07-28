@@ -8,7 +8,7 @@ import { loadConfig } from "./config.js";
 import { diffReports, renderDiff } from "./diff.js";
 import { reportAsJson, reportAsSarif, reportAsText, reportAsMarkdown } from "./reporter.js";
 import { renderDashboard } from "./reporter/dashboard.js";
-import { generateRemediationPlan } from "./remediator/ai-fix.js";
+import { generateVerifiedRemediation } from "./remediator/agentic.js";
 import { generateFirewallPolicy } from "./firewall/generator.js";
 import { scan } from "./scanner.js";
 import { writeFileSync } from "node:fs";
@@ -197,10 +197,10 @@ async function main(): Promise<void> {
   }
 
   if (options.autoFix) {
-    console.log("[+] Generating AI Auto-Remediation Plan...");
-    const plan = await generateRemediationPlan(report.findings);
+    console.log("[+] Generating verified AI remediation (Claude proposes, the engine verifies)...");
+    const plan = await generateVerifiedRemediation(report);
     writeFileSync("MCP_REMEDIATION.md", plan, "utf8");
-    console.log("[+] AI Remediation Plan saved to MCP_REMEDIATION.md");
+    console.log("[+] Verified remediation saved to MCP_REMEDIATION.md");
   }
 
   if (options.format === "dashboard") {

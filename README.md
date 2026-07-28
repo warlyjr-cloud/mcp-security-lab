@@ -234,7 +234,7 @@ server that returns a proper MCP error for bad input produces no fuzzing finding
 On top of the deterministic engine, three opt-in capabilities use **Anthropic's Claude**
 (`claude-opus-4-8`, requires `ANTHROPIC_API_KEY`):
 
-1. **Auto-Remediation (`--auto-fix`)**: Generates a `MCP_REMEDIATION.md` file with precise code snippets and instructions on how to patch the high/critical vulnerabilities detected during the scan.
+1. **Verified Auto-Remediation (`--auto-fix`)**: An **agentic, self-verifying** loop. Claude proposes a corrected tool definition, and the **deterministic engine — not the model — decides whether the fix holds**, feeding the remaining rule ids back so Claude iterates until every rule passes. Each fix in `MCP_REMEDIATION.md` is marked ✅ _verified_ only when re-running every MCP Verifier rule on the proposed definition yields zero findings. This makes Claude the engine of remediation while keeping the verdict deterministic. (Requires `ANTHROPIC_API_KEY`.)
 2. **Zero-Trust Firewall Generator (`--generate-firewall`)**: Generates an `mcp-firewall.json` policy that you can use to block malicious or unauthenticated tools based on the scan results. (Deterministic — no API key required.)
 3. **Security Consultant TUI (`--format dashboard`)**: Run in dashboard mode and press `c` while highlighting a finding to open a built-in terminal chat session backed by Claude, for live help fixing that specific issue.
 
