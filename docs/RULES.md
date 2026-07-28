@@ -46,7 +46,7 @@ its `location` is `prompt:<name>` or `resource:<name>`.
 ## Capability lifecycle and confused deputy (requires `--execute`)
 
 These target attack classes specific to the MCP lifecycle and capability model, not to static
-text. `MUT001`, `AUTH006`, and `RES001` are evaluated from the handshake and discovery responses;
+text. See [MCP_ATTACK_CLASSES.md](MCP_ATTACK_CLASSES.md) for a full explainer of each class. `MUT001`, `AUTH006`, and `RES001` are evaluated from the handshake and discovery responses;
 `SAMPLE001` and `ELICIT001` fire when the server actively issues a client-directed request during
 discovery or probing (the scanner declares the `sampling` and `elicitation` client capabilities,
 records any such request, and declines it — it never runs a completion or returns user input).
