@@ -55,6 +55,26 @@ const SEVERITIES: Severity[] = ["info", "low", "medium", "high", "critical"];
 // the very context-exhaustion class this tool exists to detect.
 const MAX_METADATA_BYTES = 512 * 1024;
 
+// Default container image used to sandbox a stdio target during --execute.
+// Not yet configurable; kept here so the eventual policy.dockerImage lands in
+// one place. A future improvement is pinning by digest (sha256:...).
+const SANDBOX_IMAGE = "node:22-alpine";
+
+// Contention limits applied to the sandbox container. The target is untrusted
+// code we deliberately start, so we cap its blast radius: no extra Linux
+// capabilities, no privilege escalation, and hard caps on processes and memory
+// to blunt fork-bombs and memory-exhaustion from a hostile server.
+const SANDBOX_HARDENING_FLAGS = [
+  "--cap-drop",
+  "ALL",
+  "--security-opt",
+  "no-new-privileges",
+  "--pids-limit",
+  "512",
+  "--memory",
+  "512m",
+];
+
 function summarize(findings: Finding[]): Record<Severity, number> {
   const summary = Object.fromEntries(SEVERITIES.map((severity) => [severity, 0])) as Record<
     Severity,
@@ -197,12 +217,13 @@ async function discover(
       "--rm",
       "--network",
       "none",
+      ...SANDBOX_HARDENING_FLAGS,
       ...dockerEnvFlags(containerEnv),
       "-v",
       `${toDockerMountPath(config.target.cwd as string)}:/workspace`,
       "-w",
       "/workspace",
-      "node:22-alpine", // Default image, could be configurable in the future
+      SANDBOX_IMAGE,
       config.target.command as string,
       ...(config.target.args as string[]),
     ];
