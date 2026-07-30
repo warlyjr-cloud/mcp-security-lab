@@ -251,7 +251,7 @@ given the network.
 On top of the deterministic engine, three opt-in capabilities use **Anthropic's Claude**
 (`claude-opus-4-8`, requires `ANTHROPIC_API_KEY`):
 
-1. **Verified Auto-Remediation (`--auto-fix`)**: An **agentic, self-verifying** loop. Claude proposes a corrected tool definition, and the **deterministic engine — not the model — decides whether the fix holds**, feeding the remaining rule ids back so Claude iterates until every rule passes. Each fix in `MCP_REMEDIATION.md` is marked ✅ _verified_ only when re-running every MCP Verifier rule on the proposed definition yields zero findings. This makes Claude the engine of remediation while keeping the verdict deterministic. (Requires `ANTHROPIC_API_KEY`.)
+1. **Rule-Verified Auto-Remediation (`--auto-fix`)**: An **agentic, self-verifying** loop. Claude proposes a corrected tool definition, and the **deterministic engine — not the model — decides whether the fix holds**, feeding the remaining rule ids back so Claude iterates until every rule passes. Each fix in `MCP_REMEDIATION.md` is marked ✅ _rule-verified_ only when re-running every MCP Verifier rule on the proposed definition yields zero findings. **This verifies rule compliance only — not that the fix preserves the tool's original behavior** (a proposal that drops parameters or loosens a schema can still pass). Review the diff and run the tool's own tests before applying. This makes Claude the engine of remediation while keeping the verdict deterministic. (Requires `ANTHROPIC_API_KEY`.)
 2. **Zero-Trust Firewall Generator (`--generate-firewall`)**: Generates an `mcp-firewall.json` policy that you can use to block malicious or unauthenticated tools based on the scan results. (Deterministic — no API key required.)
 3. **Security Consultant TUI (`--format dashboard`)**: Run in dashboard mode and press `c` while highlighting a finding to open a built-in terminal chat session backed by Claude, for live help fixing that specific issue.
 
@@ -357,10 +357,12 @@ MCP Verifier detection benchmark
   [OK] clean
   Precision: 100.0%
   Recall:    100.0%
+  Sample:    2 corpus cases, 4 labeled detections (synthetic; not a statistical claim)
 ```
 
 The corpus is intentionally small and synthetic; it is a regression gate and a starting point for a
-community-maintained conformance suite (see roadmap), not a claim of exhaustive coverage.
+community-maintained conformance suite (see roadmap), not a claim of exhaustive coverage. The
+precision/recall numbers hold **on those two cases only** — they are not a statistical accuracy claim.
 
 ## Remediation loop (Claude-assisted)
 

@@ -165,16 +165,25 @@ export async function generateVerifiedRemediation(
   }
 
   if (byTool.size === 0) {
-    return "# 🛡️ Verified MCP Remediation\n\nNo high or critical tool-scoped findings to remediate.";
+    return "# 🛡️ Rule-Verified MCP Remediation\n\nNo high or critical tool-scoped findings to remediate.";
   }
 
   const anthropic = new Anthropic({ apiKey: key });
-  const sections: string[] = ["# 🛡️ Verified MCP Remediation", ""];
+  const sections: string[] = [
+    "# 🛡️ Rule-Verified MCP Remediation",
+    "",
+    "> **Scope of verification:** each proposal below was re-scanned and clears every" +
+      " deterministic MCP Verifier rule. This checks *rule compliance only* — it does" +
+      " **not** verify that the fix preserves the tool's original behavior (a proposal" +
+      " that drops parameters or loosens a schema can still pass). Review the diff and" +
+      " run the tool's own tests before applying.",
+    "",
+  ];
 
   for (const [toolName, findings] of byTool) {
     const fix = await agenticFixTool(anthropic, toolName, findings);
     const status = fix.verified
-      ? "✅ **Verified** — re-running every MCP Verifier rule on the proposed definition clears all findings."
+      ? "✅ **Rule-verified** — re-running every MCP Verifier rule on the proposed definition clears all findings (rule compliance only; behavior not verified)."
       : `⚠️ **Unverified** after ${fix.rounds} round(s) — still firing: ${fix.residual.join(", ") || "unknown"}.`;
     sections.push(`## \`${toolName}\``);
     sections.push(`Resolves: ${fix.findingIds.join(", ")}`);
