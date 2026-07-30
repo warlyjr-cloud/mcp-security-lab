@@ -20,6 +20,7 @@ export interface CliOptions {
   format: "text" | "json" | "sarif" | "markdown" | "dashboard";
   outputPath?: string;
   sandbox: "docker" | "none";
+  sandboxNetwork: "none" | "bridge";
   fuzz: boolean;
   aiFuzz: boolean;
   autoFix: boolean;
@@ -55,7 +56,8 @@ export function applyConfidenceFilter(report: ScanReport, min: Confidence): Scan
 function usage(): string {
   return [
     "Usage:",
-    "  mcp-security-lab scan --config <path> [--execute] [--sandbox docker|none] [--fuzz]",
+    "  mcp-security-lab scan --config <path> [--execute] [--sandbox docker|none]",
+    "            [--sandbox-network none|bridge] [--fuzz]",
     "            [--ai-fuzz] [--format text|json|sarif|markdown|dashboard] [--output <path>]",
     "            [--min-confidence low|medium|high] [--baseline <report.json>]",
     "            [--auto-fix] [--generate-firewall <path>]",
@@ -64,8 +66,11 @@ function usage(): string {
     "  Without --execute, only the launch configuration is inspected.",
     "  With --execute, the target starts with a filtered environment; its tools are never called.",
     "  Use --sandbox docker to run the target inside a disposable Docker container.",
+    "  --sandbox-network defaults to none; use bridge only to discover a server that",
+    "    must reach the network at startup (a SANDBOX010 finding records the relaxation).",
     "  Use --fuzz to actively call discovered tools with malicious inputs (DANGEROUS).",
-    "  --fuzz requires --execute and --sandbox docker so probing stays isolated.",
+    "  --fuzz requires --execute and --sandbox docker so probing stays isolated,",
+    "    and forces --sandbox-network none regardless of what is requested.",
   ].join("\n");
 }
 
@@ -83,6 +88,7 @@ function parseArgs(args: string[]): CliOptions {
   let format: "text" | "json" | "sarif" | "markdown" | "dashboard" = "text";
   let outputPath: string | undefined;
   let sandbox: "docker" | "none" = "none";
+  let sandboxNetwork: "none" | "bridge" = "none";
   let minConfidence: Confidence | undefined;
   let baselinePath: string | undefined;
 
@@ -109,6 +115,7 @@ function parseArgs(args: string[]): CliOptions {
       argument === "--format" ||
       argument === "--output" ||
       argument === "--sandbox" ||
+      argument === "--sandbox-network" ||
       argument === "--generate-firewall" ||
       argument === "--min-confidence" ||
       argument === "--baseline"
@@ -127,6 +134,12 @@ function parseArgs(args: string[]): CliOptions {
           sandbox = value;
         } else {
           throw new Error("--sandbox must be docker or none.");
+        }
+      } else if (argument === "--sandbox-network") {
+        if (value === "none" || value === "bridge") {
+          sandboxNetwork = value;
+        } else {
+          throw new Error("--sandbox-network must be none or bridge.");
         }
       } else if (argument === "--generate-firewall") {
         firewallPath = value;
@@ -160,6 +173,19 @@ function parseArgs(args: string[]): CliOptions {
     throw new Error(`--config is required.\n\n${usage()}`);
   }
 
+  // Active probing must never get network access: --fuzz calls tools with
+  // hostile inputs, so the container stays isolated regardless of the request.
+  if (fuzz && sandboxNetwork !== "none") {
+    throw new Error(
+      "--sandbox-network must be none when --fuzz is set; active probing stays network-isolated.",
+    );
+  }
+  // The network mode only exists inside the Docker sandbox; without it the flag
+  // would be silently ignored, so reject the meaningless combination up front.
+  if (sandboxNetwork !== "none" && sandbox !== "docker") {
+    throw new Error("--sandbox-network requires --sandbox docker.");
+  }
+
   return {
     configPath,
     execute,
@@ -168,6 +194,7 @@ function parseArgs(args: string[]): CliOptions {
     autoFix,
     format,
     sandbox,
+    sandboxNetwork,
     ...(firewallPath === undefined ? {} : { firewallPath }),
     ...(outputPath === undefined ? {} : { outputPath }),
     ...(minConfidence === undefined ? {} : { minConfidence }),
@@ -184,7 +211,13 @@ async function main(): Promise<void> {
     config.policy.aiFuzz = true;
   }
 
-  const rawReport = await scan(config, options.execute, options.sandbox, options.fuzz);
+  const rawReport = await scan(
+    config,
+    options.execute,
+    options.sandbox,
+    options.fuzz,
+    options.sandboxNetwork,
+  );
   const report =
     options.minConfidence === undefined
       ? rawReport

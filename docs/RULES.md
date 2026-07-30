@@ -114,6 +114,19 @@ hop cannot bypass that check.
 These replace the previous behavior of aborting the scan: a hostile server that floods tools or
 returns megabytes of metadata now produces a finding instead of crashing the scanner.
 
+## Sandbox isolation (requires `--execute --sandbox docker`)
+
+| ID           | Severity | CWE     | OWASP | Title                                               |
+| ------------ | -------- | ------- | ----- | --------------------------------------------------- |
+| `SANDBOX010` | info     | CWE-668 | LLM06 | Sandbox network isolation was relaxed for discovery |
+
+The Docker sandbox runs the target with `--network none` by default. Some real servers open a
+network connection (or read a required credential and then connect) during `initialize` and would
+otherwise time out inside an isolated container. `--sandbox-network bridge` is an explicit opt-in that
+lets such a server start; whenever the network is relaxed the scan records a `SANDBOX010` finding so
+the report stays honest about the target having had network access. `--fuzz` always forces
+`--network none` regardless of this flag — active probing is never given the network.
+
 ## Active probing (requires `--execute --sandbox docker --fuzz`)
 
 | ID        | Severity | CWE     | OWASP | Title                                                                                |

@@ -168,6 +168,7 @@ async function discover(
   config: ScanConfig,
   sandbox: "docker" | "none",
   fuzz: boolean,
+  sandboxNetwork: "none" | "bridge" = "none",
 ): Promise<{ server: ServerMetadata; findings: Finding[]; toolsInvoked: number }> {
   const findings: Finding[] = [];
 
@@ -210,13 +211,29 @@ async function discover(
   };
 
   if (!isRemote && sandbox === "docker") {
+    // Fuzzing forces isolation upstream; here we honor an explicit opt-in so
+    // servers that must reach the network during initialize can be discovered.
+    const containerNetwork = fuzz ? "none" : sandboxNetwork;
+    if (containerNetwork !== "none") {
+      findings.push({
+        id: "SANDBOX010",
+        severity: "info",
+        title: "Sandbox network isolation was relaxed for discovery",
+        evidence: `The container ran with --network ${containerNetwork} (not the default "none"); the target could reach the network while starting up.`,
+        recommendation:
+          "Prefer --sandbox-network none. Only relax it for a server that must connect during initialize, and treat the discovery results as network-exposed.",
+        location: "sandbox.network",
+        cwe: "CWE-668",
+        owasp: "LLM06",
+      });
+    }
     stdioCommand = "docker";
     stdioArgs = [
       "run",
       "-i",
       "--rm",
       "--network",
-      "none",
+      containerNetwork,
       ...SANDBOX_HARDENING_FLAGS,
       ...dockerEnvFlags(containerEnv),
       "-v",
@@ -244,14 +261,22 @@ async function discover(
         stderr: "pipe",
       });
 
+  let stderrTail = "";
   try {
     // The SDK's transports don't satisfy their own Transport interface under
     // exactOptionalPropertyTypes (sessionId optionality); the cast is safe.
-    await withTimeout(
-      client.connect(transport as Transport),
-      config.policy.timeoutMs,
-      "MCP initialization",
-    );
+    const connecting = client.connect(transport as Transport);
+    // For a stdio target, connect() spawns the child synchronously, so its
+    // stderr stream is already available. Keep a bounded, redacted tail so that
+    // a target which exits during initialize (e.g. a missing credential) yields
+    // an actionable message instead of a bare "Connection closed".
+    if (!isRemote) {
+      const childStderr = (transport as StdioClientTransport).stderr;
+      childStderr?.on("data", (chunk: Buffer) => {
+        stderrTail = (stderrTail + chunk.toString("utf8")).slice(-2000);
+      });
+    }
+    await withTimeout(connecting, config.policy.timeoutMs, "MCP initialization");
     const response = await withTimeout(
       client.listTools(),
       config.policy.timeoutMs,
@@ -337,6 +362,22 @@ async function discover(
         owasp: "LLM10",
       });
       return { server: { toolCount: 0 }, findings, toolsInvoked: 0 };
+    }
+    // A stdio target that dies during initialize usually explains itself on
+    // stderr (a missing FIGMA_API_KEY, an unmet arg). Surface a redacted tail so
+    // the operator sees *why* instead of a bare transport error.
+    if (!isRemote && error instanceof Error) {
+      const lastLines = stderrTail
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line !== "")
+        .slice(-5)
+        .map((line) => redactArguments(line.split(/\s+/)).join(" "))
+        .join(" | ")
+        .slice(0, 400);
+      if (lastLines !== "") {
+        error.message = `${error.message} (target stderr: ${lastLines})`;
+      }
     }
     throw error;
   } finally {
@@ -536,6 +577,7 @@ export async function scan(
   execute: boolean,
   sandbox: "docker" | "none" = "none",
   fuzz: boolean = false,
+  sandboxNetwork: "none" | "bridge" = "none",
 ): Promise<ScanReport> {
   if (fuzz && !execute) {
     throw new Error("--fuzz requires --execute.");
@@ -543,6 +585,13 @@ export async function scan(
   if (fuzz && sandbox !== "docker") {
     throw new Error(
       "--fuzz performs active tool calls and requires --sandbox docker so the target is isolated.",
+    );
+  }
+  // Defense in depth: active probing stays network-isolated even when scan() is
+  // called directly as a library rather than through the CLI guard.
+  if (fuzz && sandboxNetwork !== "none") {
+    throw new Error(
+      "sandboxNetwork must be none when fuzzing; active probing stays network-isolated.",
     );
   }
 
@@ -564,7 +613,7 @@ export async function scan(
       findings.push(...(await inspectRemoteAuth(config.target.url, config.policy.timeoutMs)));
     }
     try {
-      const discovery = await discover(config, sandbox, fuzz);
+      const discovery = await discover(config, sandbox, fuzz, sandboxNetwork);
       server = discovery.server;
       toolsInvoked = discovery.toolsInvoked;
       findings.push(...discovery.findings);
