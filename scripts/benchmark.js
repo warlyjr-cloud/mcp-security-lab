@@ -61,6 +61,11 @@ async function main() {
   console.log(`  False positives: ${fp}`);
   console.log(`  Precision: ${(precision * 100).toFixed(1)}%`);
   console.log(`  Recall:    ${(recall * 100).toFixed(1)}%`);
+  // Always print the sample size next to the rates: on a tiny synthetic corpus
+  // "100%" is a regression gate, not a statistical accuracy claim.
+  console.log(
+    `  Sample:    ${rows.length} corpus cases, ${tp + fn} labeled detections (synthetic; not a statistical claim)`,
+  );
 
   if (fn > 0 || fp > 0) {
     process.exitCode = 1;
