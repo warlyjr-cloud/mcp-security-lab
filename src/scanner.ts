@@ -587,6 +587,15 @@ export async function scan(
       "--fuzz performs active tool calls and requires --sandbox docker so the target is isolated.",
     );
   }
+  // The Docker sandbox only wraps a locally-launched stdio process; it cannot
+  // isolate a server reached over the network. Fuzzing a remote URL would send
+  // hostile inputs to a live server with no sandbox at all while the report
+  // still claimed osSandboxed — refuse it outright.
+  if (fuzz && config.target.url !== undefined) {
+    throw new Error(
+      "--fuzz cannot target a remote URL: the Docker sandbox only isolates a local stdio target.",
+    );
+  }
   // Defense in depth: active probing stays network-isolated even when scan() is
   // called directly as a library rather than through the CLI guard.
   if (fuzz && sandboxNetwork !== "none") {
@@ -672,20 +681,29 @@ export async function scan(
             : "http"
           : "stdio",
       environmentMode: config.target.url !== undefined ? "none" : "allowlist",
-      osSandboxed: sandbox === "docker",
+      // The container is only built for a locally-launched stdio target
+      // (see discover: `!isRemote && sandbox === "docker"`). A remote target is
+      // never OS-sandboxed, so it must not report osSandboxed just because the
+      // "docker" argument was passed.
+      osSandboxed: sandbox === "docker" && config.target.url === undefined,
       limitations:
-        sandbox === "docker"
-          ? fuzz
-            ? [
-                "The target runs inside a network-isolated Docker container and its tools were probed.",
-              ]
+        config.target.url !== undefined
+          ? [
+              "The remote target is reached over the network and is not OS-sandboxed.",
+              "The scanner inspects advertised metadata over the connection and does not invoke tools.",
+            ]
+          : sandbox === "docker"
+            ? fuzz
+              ? [
+                  "The target runs inside a network-isolated Docker container and its tools were probed.",
+                ]
+              : [
+                  "The target runs inside a network-isolated Docker container; its tools were not invoked.",
+                ]
             : [
-                "The target runs inside a network-isolated Docker container; its tools were not invoked.",
-              ]
-          : [
-              "The target process is not isolated from the host filesystem or network.",
-              "The scanner inspects advertised tool metadata but does not invoke tools.",
-            ],
+                "The target process is not isolated from the host filesystem or network.",
+                "The scanner inspects advertised tool metadata but does not invoke tools.",
+              ],
     },
     ...(server === undefined ? {} : { server }),
     summary: summarize(findings),

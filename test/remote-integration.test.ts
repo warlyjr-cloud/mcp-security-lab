@@ -72,6 +72,38 @@ test("a remote --execute scan connects and flags unauthenticated access (REMOTE0
   });
 });
 
+test("a remote scan never reports osSandboxed, even when --sandbox docker is passed", async () => {
+  await withMcpHttpServer(async (url) => {
+    // The Docker sandbox only wraps a local stdio process; a remote target is
+    // reached over the network and is never OS-sandboxed. The report must say so
+    // regardless of the sandbox argument.
+    const report = await scan(
+      { target: { url, transport: "http" }, policy: { timeoutMs: 5_000, maxTools: 50 } },
+      true,
+      "docker",
+    );
+    assert.equal(report.execution.connected, true);
+    assert.equal(report.execution.osSandboxed, false);
+    assert.equal(report.execution.toolsInvoked, 0);
+    assert.ok(
+      report.execution.limitations.some((line) => /not OS-sandboxed/.test(line)),
+      "remote limitations must state the target is not OS-sandboxed",
+    );
+  });
+});
+
+test("--fuzz against a remote URL is refused (no sandbox can isolate it)", async () => {
+  await assert.rejects(
+    scan(
+      { target: { url: "https://example.com/mcp", transport: "http" }, policy: { timeoutMs: 3_000, maxTools: 50 } },
+      true,
+      "docker",
+      true,
+    ),
+    /--fuzz cannot target a remote URL/,
+  );
+});
+
 test("a remote target that does not complete the handshake yields EXEC002, not a crash", async () => {
   await withPlainHttpServer(async (url) => {
     const report = await scan(
