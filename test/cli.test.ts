@@ -165,6 +165,64 @@ test("--sandbox none is accepted explicitly", () => {
   assert.equal(result.status, 0);
 });
 
+test("usage documents the --sandbox-network flag", () => {
+  const result = runCli([]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--sandbox-network/);
+});
+
+test("an invalid --sandbox-network value is rejected", () => {
+  const result = runCli([
+    "scan",
+    "--config",
+    resolve("examples/insecure-server.json"),
+    "--sandbox-network",
+    "host",
+  ]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--sandbox-network must be none or bridge/);
+});
+
+test("--sandbox-network none is accepted explicitly", () => {
+  const result = runCli([
+    "scan",
+    "--config",
+    resolve("examples/insecure-server.json"),
+    "--sandbox-network",
+    "none",
+  ]);
+  assert.equal(result.status, 0);
+});
+
+test("--sandbox-network bridge without --sandbox docker is rejected", () => {
+  const result = runCli([
+    "scan",
+    "--config",
+    resolve("examples/insecure-server.json"),
+    "--execute",
+    "--sandbox-network",
+    "bridge",
+  ]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--sandbox-network requires --sandbox docker/);
+});
+
+test("--fuzz with a relaxed --sandbox-network is rejected", () => {
+  const result = runCli([
+    "scan",
+    "--config",
+    resolve("examples/insecure-server.json"),
+    "--execute",
+    "--sandbox",
+    "docker",
+    "--sandbox-network",
+    "bridge",
+    "--fuzz",
+  ]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--sandbox-network must be none when --fuzz is set/);
+});
+
 test("--ai-fuzz is accepted without requiring --fuzz", () => {
   const result = runCli([
     "scan",

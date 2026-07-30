@@ -149,3 +149,27 @@ test("scanner report never exposes sensitive launcher arguments", async () => {
   assert.deepEqual(report.target.args, ["server.js", "--token", "[REDACTED]"]);
   assert.equal(JSON.stringify(report).includes("sensitive-value"), false);
 });
+
+test("a target that dies during initialize surfaces a redacted stderr tail", async () => {
+  await assert.rejects(
+    scan(
+      {
+        target: {
+          command: process.execPath,
+          args: [resolve("dist/fixtures/boot-failure-server.js")],
+          cwd: process.cwd(),
+        },
+        policy: { timeoutMs: 5_000, maxTools: 10 },
+      },
+      true,
+    ),
+    (error: Error) => {
+      // The actionable reason from the child's stderr is surfaced...
+      assert.match(error.message, /target stderr:/);
+      assert.match(error.message, /is required to start/);
+      // ...but a secret-shaped value in that stderr is redacted, not leaked.
+      assert.doesNotMatch(error.message, /figd_secret123/);
+      return true;
+    },
+  );
+});

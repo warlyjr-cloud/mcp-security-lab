@@ -230,6 +230,22 @@ node dist/src/cli.js scan --config examples/vulnerable-server.json --execute --s
 crashes on malicious input, so this command demonstrates a `FUZZ001` critical finding. A well-behaved
 server that returns a proper MCP error for bad input produces no fuzzing finding.
 
+### Discovering servers that need the network at boot
+
+The Docker sandbox runs the target with `--network none`. Some servers open a connection (or read a
+required credential and then connect) during `initialize` and would time out under that isolation.
+`--sandbox-network bridge` is an explicit opt-in that lets such a server start inside the sandbox;
+the relaxation is recorded as an informational `SANDBOX010` finding so the report stays honest. When a
+target exits during startup (for example a missing API key), the scanner surfaces a redacted tail of
+its stderr so you can see _why_ instead of a bare "Connection closed".
+
+```powershell
+node dist/src/cli.js scan --config examples/remote-server.json --execute --sandbox docker --sandbox-network bridge
+```
+
+`--fuzz` always forces `--network none`, regardless of `--sandbox-network` — active probing is never
+given the network.
+
 ## Claude-powered features (optional, AI-driven)
 
 On top of the deterministic engine, three opt-in capabilities use **Anthropic's Claude**
