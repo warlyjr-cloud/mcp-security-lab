@@ -12,8 +12,13 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write # npm provenance attestation on publish
     steps:
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        id: release
         with:
           # Manifest mode: the release-type and the current version live in
           # release-please-config.json / .release-please-manifest.json. The
@@ -21,3 +26,23 @@ jobs:
           # stops proposing 1.1.0 from the stale v1.0.0 GitHub Release.
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Publish here rather than via a separate `release: published` workflow: a
+      # release created by GITHUB_TOKEN does not fire that event, so the publish
+      # must happen in this same run, right after the release is created.
+      - if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - if: ${{ steps.release.outputs.release_created == 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+      - if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: npm ci
+      # prepack runs the full build + test suite, so a broken build never ships.
+      - if: ${{ steps.release.outputs.release_created == 'true' }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
