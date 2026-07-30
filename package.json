@@ -1,6 +1,6 @@
 {
   "name": "mcp-security-lab",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "MCP Security Lab — MCP Verifier: evidence-first, deterministic security checks for local and remote Model Context Protocol servers, with optional Claude-powered remediation.",
   "type": "module",
   "bin": {
