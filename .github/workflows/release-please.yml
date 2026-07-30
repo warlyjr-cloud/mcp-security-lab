@@ -15,4 +15,9 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         with:
-          release-type: node
+          # Manifest mode: the release-type and the current version live in
+          # release-please-config.json / .release-please-manifest.json. The
+          # manifest pins 1.3.0 (the version already on npm) so release-please
+          # stops proposing 1.1.0 from the stale v1.0.0 GitHub Release.
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
