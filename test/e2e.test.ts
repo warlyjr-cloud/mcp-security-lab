@@ -187,4 +187,6 @@ test("the Docker sandbox pins the image by digest and drops privileges", async (
   assert.match(flags, /--ipc none/);
   assert.match(flags, /--pids-limit/);
   assert.match(flags, /--memory/);
+  // Non-root: the target must not run as uid 0 inside the container.
+  assert.match(flags, /--user 1000:1000/);
 });

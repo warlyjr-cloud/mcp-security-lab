@@ -81,6 +81,11 @@ export const SANDBOX_HARDENING_FLAGS = [
   "/tmp:rw,noexec,nosuid,size=64m",
   "--ipc",
   "none",
+  // Drop root inside the container: run as the pinned image's unprivileged
+  // "node" user (uid/gid 1000). The workspace is mounted read-only and /tmp is a
+  // tmpfs, so a non-root target can still read its own files and use /tmp.
+  "--user",
+  "1000:1000",
 ];
 
 function summarize(findings: Finding[]): Record<Severity, number> {
