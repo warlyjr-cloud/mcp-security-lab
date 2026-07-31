@@ -1,5 +1,5 @@
 {
-  "description": "Well-known public MCP servers to audit with `npm run scan:registry`. Running this executes third-party code via npx — use --sandbox docker or a disposable VM for untrusted servers. The committed FINDINGS.md was produced by an actual run against these reference servers.",
+  "description": "Well-known public MCP servers to audit with `npm run scan:registry`. Running this executes third-party code via npx — use --sandbox docker or a disposable VM for untrusted servers. The committed FINDINGS.md was produced by an actual run against these reference servers. Servers that need credentials/env to boot will not connect; that non-connection is itself recorded.",
   "servers": [
     {
       "name": "@modelcontextprotocol/server-everything",
@@ -15,6 +15,55 @@
       "name": "@modelcontextprotocol/server-sequential-thinking",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    }
+    },
+    {
+      "name": "@modelcontextprotocol/server-filesystem",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-github",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-gitlab",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-gitlab"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-slack",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-postgres",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-brave-search",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-google-maps",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-puppeteer",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-puppeteer"]
+    },
+    {
+      "name": "@modelcontextprotocol/server-everart",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everart"]
+    },
+    { "name": "firecrawl-mcp", "command": "npx", "args": ["-y", "firecrawl-mcp"] },
+    { "name": "exa-mcp-server", "command": "npx", "args": ["-y", "exa-mcp-server"] },
+    { "name": "tavily-mcp", "command": "npx", "args": ["-y", "tavily-mcp"] },
+    { "name": "airtable-mcp-server", "command": "npx", "args": ["-y", "airtable-mcp-server"] }
   ]
 }
