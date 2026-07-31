@@ -101,6 +101,10 @@ node dist/src/cli.js scan --config examples/insecure-server.json --execute
 The first form performs launch-configuration checks only. `--execute` acknowledges that the
 target command will run and enables MCP discovery.
 
+Releases are automated (Release Please) and each version is published to npm with **build
+provenance** (a signed [Sigstore attestation](https://docs.npmjs.com/generating-provenance-statements)
+linking the tarball to the GitHub commit and workflow that built it).
+
 ## Example output
 
 Scanning the bundled intentionally-insecure fixture (`--execute`):
@@ -220,7 +224,9 @@ node dist/src/cli.js scan --config examples/remote-server.json --execute
 By default the scanner never invokes a discovered tool. Active probing is opt-in through `--fuzz`,
 which sends malformed and injection-shaped arguments to each tool to see whether the server validates
 input or crashes/hangs. Because this executes tool code, `--fuzz` **requires both `--execute` and
-`--sandbox docker`** so the target is network-isolated; the scanner refuses to fuzz on the host.
+`--sandbox docker`** so the target is network-isolated; the scanner refuses to fuzz on the host. It
+also refuses to fuzz a **remote** target — the sandbox only isolates a locally-launched process, so a
+remote URL is never actively probed and is never reported as OS-sandboxed.
 
 ```powershell
 node dist/src/cli.js scan --config examples/vulnerable-server.json --execute --sandbox docker --fuzz
@@ -296,7 +302,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: warlyjr-cloud/mcp-security-lab@v1.0.0
+      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.3
         with:
           config: mcp-security-lab.json
           execute: "true"
@@ -317,8 +323,11 @@ or credentials.
 ## Current limitations
 
 Without `--sandbox docker`, `--execute` provides no OS-level filesystem or network isolation: the
-server runs with the current user's permissions. Use `--sandbox docker` (which runs the target in a
-`--network none` container) or a disposable VM for untrusted software. The Docker adapter is
+server runs with the current user's permissions. Use `--sandbox docker` — which runs the target in a
+digest-pinned, `--network none`, `--read-only`, non-root (uid 1000) container with `--cap-drop ALL`,
+`no-new-privileges`, `--ipc none`, a read-only workspace mount, and process/memory caps — or a
+disposable VM for untrusted software. This shrinks the blast radius but does not eliminate a
+determined container-escape; see [SECURITY.md](SECURITY.md). The Docker adapter is
 POSIX-oriented; Windows paths are translated for bind-mounts but Docker Desktop must be running.
 Remote scanning uses the Streamable HTTP transport by default (SSE is available for legacy servers).
 See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
