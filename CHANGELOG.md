@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.1...mcp-security-lab-v1.4.2) (2026-07-31)
+
+
+### Bug Fixes
+
+* **scanner:** run the Docker sandbox as an unprivileged user (uid 1000) ([#48](https://github.com/warlyjr-cloud/mcp-security-lab/issues/48)) ([7bd3210](https://github.com/warlyjr-cloud/mcp-security-lab/commit/7bd32107a451c108e0ea172a423c821d1774b22e))
+
 ## [1.4.1](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.0...mcp-security-lab-v1.4.1) (2026-07-31)
 
 
