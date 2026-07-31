@@ -173,3 +173,18 @@ test("a target that dies during initialize surfaces a redacted stderr tail", asy
     },
   );
 });
+
+test("the Docker sandbox pins the image by digest and drops privileges", async () => {
+  const { SANDBOX_IMAGE, SANDBOX_HARDENING_FLAGS } = await import("../src/scanner.js");
+  // Reproducible environment: a floating tag could be silently re-pointed.
+  assert.match(SANDBOX_IMAGE, /@sha256:[0-9a-f]{64}$/);
+  const flags = SANDBOX_HARDENING_FLAGS.join(" ");
+  // Least privilege and a non-writable container: these must not regress.
+  assert.match(flags, /--cap-drop ALL/);
+  assert.match(flags, /--security-opt no-new-privileges/);
+  assert.match(flags, /--read-only/);
+  assert.match(flags, /--tmpfs \/tmp:rw,noexec,nosuid/);
+  assert.match(flags, /--ipc none/);
+  assert.match(flags, /--pids-limit/);
+  assert.match(flags, /--memory/);
+});
