@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.2...mcp-security-lab-v1.4.3) (2026-07-31)
+
+
+### Bug Fixes
+
+* add repository/bugs/homepage so npm provenance publish succeeds ([#51](https://github.com/warlyjr-cloud/mcp-security-lab/issues/51)) ([f2941b3](https://github.com/warlyjr-cloud/mcp-security-lab/commit/f2941b3671f9004799559a2b2ee13af88462781c))
+
 ## [1.4.2](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.1...mcp-security-lab-v1.4.2) (2026-07-31)
 
 
