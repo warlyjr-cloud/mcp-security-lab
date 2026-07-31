@@ -72,6 +72,14 @@
     "mcp-verifier"
   ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/warlyjr-cloud/mcp-security-lab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/warlyjr-cloud/mcp-security-lab/issues"
+  },
+  "homepage": "https://github.com/warlyjr-cloud/mcp-security-lab#readme",
   "dependencies": {
     "@actions/github": "^9.1.1",
     "@anthropic-ai/sdk": "^0.115.0",
