@@ -56,15 +56,18 @@ const SEVERITIES: Severity[] = ["info", "low", "medium", "high", "critical"];
 const MAX_METADATA_BYTES = 512 * 1024;
 
 // Default container image used to sandbox a stdio target during --execute.
-// Not yet configurable; kept here so the eventual policy.dockerImage lands in
-// one place. A future improvement is pinning by digest (sha256:...).
-const SANDBOX_IMAGE = "node:22-alpine";
+// Pinned by digest (not a floating tag) so the sandbox is reproducible and a
+// re-tagged upstream image cannot silently change the execution environment.
+// This is node:22-alpine at the time of pinning.
+export const SANDBOX_IMAGE =
+  "node@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32";
 
 // Contention limits applied to the sandbox container. The target is untrusted
 // code we deliberately start, so we cap its blast radius: no extra Linux
-// capabilities, no privilege escalation, and hard caps on processes and memory
-// to blunt fork-bombs and memory-exhaustion from a hostile server.
-const SANDBOX_HARDENING_FLAGS = [
+// capabilities, no privilege escalation, hard caps on processes and memory to
+// blunt fork-bombs and memory-exhaustion, a read-only root filesystem with a
+// small non-exec tmpfs for /tmp, and no shared IPC namespace.
+export const SANDBOX_HARDENING_FLAGS = [
   "--cap-drop",
   "ALL",
   "--security-opt",
@@ -73,6 +76,11 @@ const SANDBOX_HARDENING_FLAGS = [
   "512",
   "--memory",
   "512m",
+  "--read-only",
+  "--tmpfs",
+  "/tmp:rw,noexec,nosuid,size=64m",
+  "--ipc",
+  "none",
 ];
 
 function summarize(findings: Finding[]): Record<Severity, number> {
@@ -237,7 +245,9 @@ async function discover(
       ...SANDBOX_HARDENING_FLAGS,
       ...dockerEnvFlags(containerEnv),
       "-v",
-      `${toDockerMountPath(config.target.cwd as string)}:/workspace`,
+      // Read-only bind mount: untrusted target code can read its own files but
+      // cannot modify the host workspace during the scan.
+      `${toDockerMountPath(config.target.cwd as string)}:/workspace:ro`,
       "-w",
       "/workspace",
       SANDBOX_IMAGE,
