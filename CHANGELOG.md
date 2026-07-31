@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.0...mcp-security-lab-v1.4.1) (2026-07-31)
+
+
+### Bug Fixes
+
+* **scanner:** harden the Docker sandbox (digest pin, read-only, tmpfs, ipc, ro mount) ([#47](https://github.com/warlyjr-cloud/mcp-security-lab/issues/47)) ([64b3679](https://github.com/warlyjr-cloud/mcp-security-lab/commit/64b3679957229cb727a667228bd7489174d1191f))
+* **scanner:** refuse remote fuzzing and never claim osSandboxed for remote targets ([#44](https://github.com/warlyjr-cloud/mcp-security-lab/issues/44)) ([fe1fbf5](https://github.com/warlyjr-cloud/mcp-security-lab/commit/fe1fbf5fa0233856dd656cb6673432469dc437cc))
+
 ## [1.4.0](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.3.0...mcp-security-lab-v1.4.0) (2026-07-30)
 
 
