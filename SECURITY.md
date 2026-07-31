@@ -18,11 +18,10 @@ Without `--sandbox docker`, the process runner is not an OS-level sandbox: a tar
 with the current user's operating-system permissions and may access the filesystem or network.
 `--sandbox docker` runs the target inside a digest-pinned container that is `--network none`,
 `--read-only` (writes go to a small `noexec` tmpfs on `/tmp`), `--cap-drop ALL`,
-`no-new-privileges`, `--ipc none`, and process/memory-capped, with the workspace bind-mounted
-read-only. This removes network access and shrinks the blast radius, but does not eliminate the
-risk of a determined container-escape exploit; the target still runs as the container's root user
-(a non-root adapter is a planned follow-up). Run unknown servers inside a disposable VM when the
-software is not trusted.
+`no-new-privileges`, `--ipc none`, runs as an unprivileged user (uid 1000, not root), and is
+process/memory-capped, with the workspace bind-mounted read-only. This removes network access and
+shrinks the blast radius, but does not eliminate the risk of a determined container-escape exploit.
+Run unknown servers inside a disposable VM when the software is not trusted.
 
 A Windows Sandbox execution adapter is not yet implemented; on Windows, use the Docker adapter or
 a disposable VM instead. Future adapters must be opt-in and independently verifiable.
