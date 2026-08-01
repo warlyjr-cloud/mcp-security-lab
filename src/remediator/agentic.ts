@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 import type { Finding, ScanReport, ToolMetadata } from "../types.js";
-import { isToolMetadata, residualFindingIds } from "./verify.js";
+import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted } from "../prompt-safety.js";
+import { INJECTION_RULE_IDS, isToolMetadata, residualFindingIds } from "./verify.js";
 
 const MODEL = "claude-opus-4-8";
 const MAX_ROUNDS = 5;
@@ -16,6 +17,15 @@ export interface VerifiedFix {
   /** Rule ids still firing on the final proposal (empty when verified). */
   residual: string[];
   rounds: number;
+  /**
+   * True when one of the findings being fixed was itself a prompt-injection
+   * detection (TOOL003/TOOL012). Rule-clearance for those is a weaker signal:
+   * the model was shown the exact injected text while drafting its "fix", so
+   * a `verified` result here means the known pattern is gone, not that the
+   * malicious intent is gone. Callers should never present this case with
+   * the same confidence as an ordinary hygiene fix.
+   */
+  injectionOriginal: boolean;
 }
 
 const SUBMIT_FIX_TOOL: Anthropic.Tool = {
@@ -67,16 +77,19 @@ export async function agenticFixTool(
     "Call submit_fix with a complete corrected tool definition (name, description, inputSchema, annotations). " +
     "The response lists rule ids that still fire. Keep revising and re-submitting until the list is empty. " +
     "Preserve the tool's original purpose; only change what the findings require. When the list is empty, " +
-    "stop and briefly explain the fix in one paragraph.";
+    `stop and briefly explain the fix in one paragraph. ${UNTRUSTED_DATA_INSTRUCTION}`;
 
   const messages: Anthropic.MessageParam[] = [
     {
       role: "user",
       content:
-        `Fix the MCP tool "${toolName}". These MCP Verifier findings must all be resolved:\n\n${findingSummary}\n\n` +
+        `Fix the MCP tool "${toolName}". These MCP Verifier findings must all be resolved:\n\n` +
+        `${wrapUntrusted(findingSummary)}\n\n` +
         "Call submit_fix with your corrected tool definition.",
     },
   ];
+
+  const injectionOriginal = findings.some((finding) => INJECTION_RULE_IDS.has(finding.id));
 
   let best: VerifiedFix = {
     toolName,
@@ -84,6 +97,7 @@ export async function agenticFixTool(
     verified: false,
     residual: findings.map((finding) => finding.id),
     rounds: 0,
+    injectionOriginal,
   };
 
   for (let round = 1; round <= MAX_ROUNDS; round += 1) {
@@ -176,14 +190,23 @@ export async function generateVerifiedRemediation(
       " deterministic MCP Verifier rule. This checks *rule compliance only* — it does" +
       " **not** verify that the fix preserves the tool's original behavior (a proposal" +
       " that drops parameters or loosens a schema can still pass). Review the diff and" +
-      " run the tool's own tests before applying.",
+      " run the tool's own tests before applying." +
+      " Tools flagged 🛑 below originally carried a prompt-injection finding (TOOL003/TOOL012):" +
+      " for those, rule-clearance only proves the *specific matched pattern* is gone, not that" +
+      " the malicious intent is gone — the fixer model was shown the exact injected text while" +
+      " drafting its proposal. Always have a human re-read the proposed description word-for-word" +
+      " for those tools before applying it.",
     "",
   ];
 
   for (const [toolName, findings] of byTool) {
     const fix = await agenticFixTool(anthropic, toolName, findings);
     const status = fix.verified
-      ? "✅ **Rule-verified** — re-running every MCP Verifier rule on the proposed definition clears all findings (rule compliance only; behavior not verified)."
+      ? fix.injectionOriginal
+        ? "🛑 **Rules cleared — manual review required** — this tool originally had a prompt-injection" +
+          " finding. Every MCP Verifier rule now passes, but that only means the known pattern is gone;" +
+          " read the proposed description below in full before trusting it."
+        : "✅ **Rule-verified** — re-running every MCP Verifier rule on the proposed definition clears all findings (rule compliance only; behavior not verified)."
       : `⚠️ **Unverified** after ${fix.rounds} round(s) — still firing: ${fix.residual.join(", ") || "unknown"}.`;
     sections.push(`## \`${toolName}\``);
     sections.push(`Resolves: ${fix.findingIds.join(", ")}`);

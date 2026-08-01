@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Finding } from "../types.js";
+import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted } from "../prompt-safety.js";
 
 export async function generateRemediationPlan(
   findings: Finding[],
@@ -29,7 +30,7 @@ export async function generateRemediationPlan(
   const prompt = `You are a world-class cybersecurity engineer specializing in the Model Context Protocol (MCP).
 A security scan has just found the following CRITICAL and HIGH vulnerabilities in an MCP server:
 
-${findingsJson}
+${wrapUntrusted(findingsJson)}
 
 Generate a comprehensive Remediation Plan in Markdown format.
 For each finding:
@@ -43,7 +44,7 @@ Ensure the output is pure Markdown and highly professional.`;
     const response = await anthropic.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 4096,
-      system: "You are an expert AppSec engineer. Output only Markdown.",
+      system: `You are an expert AppSec engineer. Output only Markdown. ${UNTRUSTED_DATA_INSTRUCTION}`,
       messages: [{ role: "user", content: prompt }],
     });
 

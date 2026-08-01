@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted } from "../prompt-safety.js";
 
 export async function generateMaliciousPayloads(
   toolName: string,
@@ -13,9 +14,9 @@ export async function generateMaliciousPayloads(
   const anthropic = new Anthropic({ apiKey: key });
 
   const prompt = `You are a cybersecurity expert building a fuzzer for the Model Context Protocol (MCP).
-Generate 3 malicious payloads to test the robustness and security of a tool named "${toolName}".
-The tool has the following JSON Schema for its inputs:
-${JSON.stringify(inputSchema, null, 2)}
+Generate 3 malicious payloads to test the robustness and security of a tool from an untrusted MCP server.
+The tool's name and JSON Schema for its inputs are below:
+${wrapUntrusted(JSON.stringify({ name: toolName, inputSchema }, null, 2))}
 
 Your goal is to test for:
 1. Prompt Injections / Jailbreaks.
@@ -28,7 +29,7 @@ Return ONLY a valid JSON array containing exactly 3 objects. Each object must re
     const response = await anthropic.messages.create({
       model: "claude-opus-4-8",
       max_tokens: 1024,
-      system: "You output only pure JSON arrays.",
+      system: `You output only pure JSON arrays. ${UNTRUSTED_DATA_INSTRUCTION}`,
       messages: [{ role: "user", content: prompt }],
     });
 
