@@ -27,7 +27,15 @@ async function main() {
     try {
       const report = await scan(
         {
-          target: { command: server.command, args: server.args, cwd: process.cwd() },
+          target: {
+            command: server.command,
+            args: server.args,
+            cwd: process.cwd(),
+            // Optional placeholder env so credential-gated servers complete the MCP
+            // handshake and advertise their tools. Values are fake and never valid;
+            // tools are never invoked, so no real API call is ever made.
+            ...(server.env ? { env: server.env } : {}),
+          },
           policy: { timeoutMs: 60000, maxTools: 100 },
         },
         true,
