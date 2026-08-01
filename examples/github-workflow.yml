@@ -1,0 +1,20 @@
+# Copy this to .github/workflows/mcp-security.yml in your MCP server repo.
+# It scans your server on every push and pull request and uploads findings to
+# GitHub code scanning. Replace `your-mcp-server` with your npm package name.
+name: MCP security
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.4
+        with:
+          package: your-mcp-server
+          execute: "true"
+          fail-on-findings: "false" # start advisory; flip to "true" once clean

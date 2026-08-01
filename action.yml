@@ -8,8 +8,17 @@ branding:
 
 inputs:
   config:
-    description: Path to the MCP Security Lab JSON configuration in the caller repository.
-    required: true
+    description: Path to an MCP Security Lab JSON configuration. Optional — provide this OR `package`/`command` for a zero-config run.
+    required: false
+  package:
+    description: Zero-config shortcut — an npm package to launch via `npx -y <package>` (e.g. your published MCP server). Ignored when `config` is set.
+    required: false
+  command:
+    description: Zero-config shortcut — the executable to launch the server (e.g. `node`). Use with `args`. Ignored when `config` or `package` is set.
+    required: false
+  args:
+    description: Whitespace-separated arguments for `package`/`command` (e.g. `dist/server.js /tmp`). For complex args, use a `config` file instead.
+    required: false
   execute:
     description: Start the configured server and inspect advertised MCP tool metadata.
     required: false
@@ -55,11 +64,44 @@ runs:
       shell: bash
       run: npm --prefix "$GITHUB_ACTION_PATH" run build
 
+    - name: Resolve config
+      id: resolve
+      shell: bash
+      env:
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_PACKAGE: ${{ inputs.package }}
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_ARGS: ${{ inputs.args }}
+        DEST: ${{ runner.temp }}/mcp-security-lab.config.json
+      run: |
+        # An explicit config file always wins. Otherwise synthesize one from the
+        # zero-config `package`/`command` shortcuts so a caller needs no JSON file.
+        if [[ -n "$INPUT_CONFIG" ]]; then
+          echo "config=$INPUT_CONFIG" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        node -e '
+          const fs = require("fs");
+          const pkg = process.env.INPUT_PACKAGE?.trim();
+          const cmd = process.env.INPUT_COMMAND?.trim();
+          const raw = (process.env.INPUT_ARGS || "").trim();
+          const extra = raw ? raw.split(/\s+/) : [];
+          let target;
+          if (pkg) target = { command: "npx", args: ["-y", pkg, ...extra] };
+          else if (cmd) target = { command: cmd, args: extra };
+          else {
+            console.error("mcp-security-lab: provide one of `config`, `package`, or `command`.");
+            process.exit(1);
+          }
+          fs.writeFileSync(process.env.DEST, JSON.stringify({ target, policy: { timeoutMs: 60000, maxTools: 200 } }));
+        '
+        echo "config=$DEST" >> "$GITHUB_OUTPUT"
+
     - name: Scan MCP server
       id: scan
       shell: bash
       env:
-        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_CONFIG: ${{ steps.resolve.outputs.config }}
         INPUT_EXECUTE: ${{ inputs.execute }}
         SARIF_PATH: ${{ runner.temp }}/mcp-security-lab.sarif
       run: |
@@ -88,7 +130,7 @@ runs:
       if: ${{ inputs.comment-pr == 'true' }}
       shell: bash
       env:
-        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_CONFIG: ${{ steps.resolve.outputs.config }}
         INPUT_EXECUTE: ${{ inputs.execute }}
       run: |
         args=(scan --config "$INPUT_CONFIG" --format markdown --output MCP_SCORECARD.md)
