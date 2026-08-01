@@ -11,7 +11,15 @@ test("GitHub Action manifest is valid and uploads SARIF with the current major a
 
   assert.equal(manifest.name, "MCP Security Lab");
   assert.equal(manifest.runs.using, "composite");
-  assert.equal(manifest.inputs.config.required, true);
+  // `config` is optional: a caller may instead use the zero-config `package` /
+  // `command` shortcuts, which a resolve step turns into a synthesized config.
+  assert.equal(manifest.inputs.config.required, false);
+  assert.ok(manifest.inputs.package, "package input exists for zero-config runs");
+  assert.ok(manifest.inputs.command, "command input exists for zero-config runs");
+  assert.ok(
+    manifest.runs.steps.some((step: Record<string, unknown>) => step.id === "resolve"),
+    "a resolve-config step synthesizes the config from package/command",
+  );
   assert.equal(manifest.inputs.execute.default, "false");
   assert.equal(manifest.inputs["upload-sarif"].default, "true");
 
