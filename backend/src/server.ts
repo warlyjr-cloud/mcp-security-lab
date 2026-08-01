@@ -6,7 +6,8 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import { AuthAttemptLimiter, credentialsMatch, parseBasicAuthHeader } from './auth';
 
 dotenv.config();
 
@@ -43,16 +44,17 @@ const anthropic = new Anthropic({ apiKey: apiKey || 'MISSING_API_KEY' });
 
 // This backend binds to loopback and restricts CORS to localhost, but that only
 // keeps *remote* web pages out -- any other local process or user on a shared
-// host can still reach this port and spend the operator's Anthropic quota on
-// /api/consult. Require HTTP Basic Auth for that endpoint. If no password is
-// configured, generate one at startup rather than shipping a hardcoded default
-// credential; the demo stays usable out of the box, but the credential is only
-// ever known to whoever reads this process's own console output.
+// host can still reach this port, spend the operator's Anthropic quota on
+// /api/consult, or run scans on their behalf via /api/scan. Require HTTP Basic
+// Auth on both endpoints. If no password is configured, generate one at
+// startup rather than shipping a hardcoded default credential; the demo stays
+// usable out of the box, but the credential is only ever known to whoever
+// reads this process's own console output.
 const BASIC_AUTH_USER = process.env.MCP_CONSULT_USER || 'mcp-consult';
 const BASIC_AUTH_PASSWORD = process.env.MCP_CONSULT_PASSWORD || randomBytes(18).toString('base64url');
 if (!process.env.MCP_CONSULT_PASSWORD) {
     console.log(
-        '[MCP Security Lab] MCP_CONSULT_PASSWORD is not set; generated a one-time password for /api/consult:\n' +
+        '[MCP Security Lab] MCP_CONSULT_PASSWORD is not set; generated a one-time password for /api/consult and /api/scan:\n' +
             `  user:     ${BASIC_AUTH_USER}\n` +
             `  password: ${BASIC_AUTH_PASSWORD}\n` +
             'Set MCP_CONSULT_USER / MCP_CONSULT_PASSWORD (and the matching VITE_CONSULT_USER / ' +
@@ -60,33 +62,29 @@ if (!process.env.MCP_CONSULT_PASSWORD) {
     );
 }
 
-/** Fixed-length digest comparison so neither timing nor a length mismatch leaks anything. */
-function timingSafeStringEqual(a: string, b: string): boolean {
-    const digestA = createHash('sha256').update(a).digest();
-    const digestB = createHash('sha256').update(b).digest();
-    return timingSafeEqual(digestA, digestB);
-}
+const EXPECTED_CREDENTIALS = { user: BASIC_AUTH_USER, password: BASIC_AUTH_PASSWORD };
+// Shared across both routes: a local attacker guessing the password through
+// /api/consult should also trip the lockout for /api/scan, and vice versa.
+const authLimiter = new AuthAttemptLimiter();
 
 function requireBasicAuth(req: Request, res: Response, next: NextFunction): void {
-    const header = req.headers.authorization || '';
-    const [scheme, encoded] = header.split(' ');
-    if (scheme === 'Basic' && encoded) {
-        const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-        const separatorIndex = decoded.indexOf(':');
-        if (separatorIndex !== -1) {
-            const user = decoded.slice(0, separatorIndex);
-            const password = decoded.slice(separatorIndex + 1);
-            if (
-                timingSafeStringEqual(user, BASIC_AUTH_USER) &&
-                timingSafeStringEqual(password, BASIC_AUTH_PASSWORD)
-            ) {
-                next();
-                return;
-            }
-        }
+    const lockoutRemainingMs = authLimiter.lockoutRemainingMs();
+    if (lockoutRemainingMs > 0) {
+        res.set('Retry-After', String(Math.ceil(lockoutRemainingMs / 1000)));
+        res.status(429).json({ error: 'Too many failed authentication attempts. Try again later.' });
+        return;
     }
-    res.set('WWW-Authenticate', 'Basic realm="MCP Security Lab Consultant"');
-    res.status(401).json({ error: 'Basic authentication required for /api/consult.' });
+
+    const provided = parseBasicAuthHeader(req.headers.authorization);
+    if (provided && credentialsMatch(provided, EXPECTED_CREDENTIALS)) {
+        authLimiter.recordSuccess();
+        next();
+        return;
+    }
+
+    authLimiter.recordFailure();
+    res.set('WWW-Authenticate', 'Basic realm="MCP Security Lab"');
+    res.status(401).json({ error: 'Basic authentication required.' });
 }
 
 app.post('/api/consult', requireBasicAuth, async (req: Request, res: Response): Promise<void> => {
@@ -169,7 +167,7 @@ function sanitizeConfig(raw: unknown): SafeConfig | null {
  * execution. The config is strictly rebuilt (sanitizeConfig) before use. To run
  * a full discovery/`--execute` scan, use the CLI directly on a trusted host.
  */
-app.post('/api/scan', async (req: Request, res: Response): Promise<void> => {
+app.post('/api/scan', requireBasicAuth, async (req: Request, res: Response): Promise<void> => {
     const config = sanitizeConfig((req.body ?? {}).config);
     if (config === null) {
         res.status(400).json({
@@ -227,6 +225,10 @@ app.post('/api/scan', async (req: Request, res: Response): Promise<void> => {
 });
 
 // Bind to loopback only: this developer demo must not be reachable off-host.
-app.listen(Number(port), '127.0.0.1', () => {
-    console.log(`[MCP Security Lab] Backend server is running on http://127.0.0.1:${port}`);
-});
+// Guarded so importing this module (e.g. from a future test) never starts a
+// real listener as a side effect.
+if (require.main === module) {
+    app.listen(Number(port), '127.0.0.1', () => {
+        console.log(`[MCP Security Lab] Backend server is running on http://127.0.0.1:${port}`);
+    });
+}

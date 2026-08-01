@@ -61,6 +61,14 @@ const LEAK_PATTERNS = [
   },
 ];
 
+/**
+ * Detects a leaked secret but never echoes the matched substring back into
+ * the finding: `evidence` names the pattern that fired, not the value that
+ * matched it. Findings feed the AI remediation prompts (ai-fix.ts, agentic.ts),
+ * which are sent to Claude and rendered in a Markdown report -- reproducing
+ * the actual secret there would forward it to a third party and persist it to
+ * disk. Keep any new pattern's evidence string free of `content`.
+ */
 export function scanForDataLeaks(content: string, location: string, toolName: string): Finding[] {
   const findings: Finding[] = [];
 

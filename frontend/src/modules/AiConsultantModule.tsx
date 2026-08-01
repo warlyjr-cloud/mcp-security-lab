@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppState } from '../store/AppStateContext';
+import { BACKEND_AUTH_HINT, buildBackendHeaders } from '../lib/backendAuth';
 
 export const AiConsultantModule: React.FC = () => {
   const { addLog } = useAppState();
@@ -18,16 +19,9 @@ export const AiConsultantModule: React.FC = () => {
 
     try {
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      const consultPassword = import.meta.env.VITE_CONSULT_PASSWORD;
-      if (consultPassword) {
-        const consultUser = import.meta.env.VITE_CONSULT_USER || 'mcp-consult';
-        headers['Authorization'] = `Basic ${btoa(`${consultUser}:${consultPassword}`)}`;
-      }
-
       const response = await fetch(`${apiBase}/api/consult`, {
         method: 'POST',
-        headers,
+        headers: buildBackendHeaders(),
         body: JSON.stringify({
           prompt: userText,
           moduleContext: 'AI Consultant Chat Interface'
@@ -35,9 +29,13 @@ export const AiConsultantModule: React.FC = () => {
       });
 
       if (response.status === 401) {
-        const message =
-          'Authentication required: set VITE_CONSULT_PASSWORD in frontend/.env to match the ' +
-          "backend's MCP_CONSULT_PASSWORD (see the backend's startup log), then restart the dev server.";
+        const message = `Authentication required: ${BACKEND_AUTH_HINT}`;
+        setConversation(prev => [...prev, { role: 'ai', text: `Error: ${message}` }]);
+        addLog(`AI Consultant Error: ${message}`);
+        return;
+      }
+      if (response.status === 429) {
+        const message = 'Too many failed authentication attempts. Try again in a minute.';
         setConversation(prev => [...prev, { role: 'ai', text: `Error: ${message}` }]);
         addLog(`AI Consultant Error: ${message}`);
         return;

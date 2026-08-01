@@ -2,12 +2,18 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Finding } from "../types.js";
 import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted } from "../prompt-safety.js";
 
+/**
+ * @param client Optional pre-built Anthropic client, injected in tests to avoid
+ *   real network calls. Production callers omit it and let this function build
+ *   one from `apiKey`/`ANTHROPIC_API_KEY`.
+ */
 export async function generateRemediationPlan(
   findings: Finding[],
   apiKey?: string,
+  client?: Anthropic,
 ): Promise<string> {
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
-  if (!key) {
+  if (!client && !key) {
     return "Skipping AI Remediation: ANTHROPIC_API_KEY environment variable is missing.";
   }
 
@@ -15,7 +21,7 @@ export async function generateRemediationPlan(
     return "# 🛡️ MCP Remediation Plan\n\nNo vulnerabilities found! Your server is secure.";
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = client ?? new Anthropic({ apiKey: key });
 
   // Filter only HIGH and CRITICAL findings for remediation to save context
   const criticalFindings = findings.filter(

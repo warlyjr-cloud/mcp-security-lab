@@ -1,17 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted } from "../prompt-safety.js";
 
+/**
+ * @param client Optional pre-built Anthropic client, injected in tests to avoid
+ *   real network calls. Production callers omit it and let this function build
+ *   one from `apiKey`/`ANTHROPIC_API_KEY`.
+ */
 export async function generateMaliciousPayloads(
   toolName: string,
   inputSchema: Record<string, unknown>,
   apiKey?: string,
+  client?: Anthropic,
 ): Promise<Record<string, unknown>[]> {
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
-  if (!key) {
+  if (!client && !key) {
     throw new Error("ANTHROPIC_API_KEY environment variable is missing for AI fuzzing.");
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = client ?? new Anthropic({ apiKey: key });
 
   const prompt = `You are a cybersecurity expert building a fuzzer for the Model Context Protocol (MCP).
 Generate 3 malicious payloads to test the robustness and security of a tool from an untrusted MCP server.

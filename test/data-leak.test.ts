@@ -33,3 +33,16 @@ test("scanForDataLeaks detects an NVIDIA NIM API key", () => {
 test("scanForDataLeaks returns no findings for benign content", () => {
   assert.deepEqual(scanForDataLeaks("The weather today is sunny.", "tool:x", "get_weather"), []);
 });
+
+test("scanForDataLeaks never echoes the matched secret back into the finding", () => {
+  // Findings feed the AI remediation prompts sent to Claude and the Markdown
+  // report written to disk; reproducing the actual secret there would forward
+  // it to a third party and persist it. This locks in that redaction.
+  const secret = "sk-proj-abcdefghijklmnopqrstuvwxyz0123456789";
+  const findings = scanForDataLeaks(`api_key=${secret}`, "tool:fetch_secret", "fetch_secret");
+  assert.ok(findings.length > 0);
+  for (const finding of findings) {
+    assert.doesNotMatch(finding.evidence, new RegExp(secret.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")));
+    assert.doesNotMatch(finding.recommendation, new RegExp(secret.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")));
+  }
+});

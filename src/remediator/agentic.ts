@@ -154,13 +154,18 @@ export async function agenticFixTool(
  * Produce a remediation report where each tool-scoped fix is **verified** by the
  * deterministic engine, not merely suggested by the model. Requires an Anthropic
  * API key; returns a message if none is available.
+ *
+ * @param client Optional pre-built Anthropic client, injected in tests to avoid
+ *   real network calls. Production callers omit it and let this function build
+ *   one from `apiKey`/`ANTHROPIC_API_KEY`.
  */
 export async function generateVerifiedRemediation(
   report: ScanReport,
   apiKey?: string,
+  client?: Anthropic,
 ): Promise<string> {
   const key = apiKey || process.env.ANTHROPIC_API_KEY;
-  if (!key) {
+  if (!client && !key) {
     return "Skipping verified remediation: ANTHROPIC_API_KEY is not set.";
   }
 
@@ -182,7 +187,7 @@ export async function generateVerifiedRemediation(
     return "# 🛡️ Rule-Verified MCP Remediation\n\nNo high or critical tool-scoped findings to remediate.";
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
+  const anthropic = client ?? new Anthropic({ apiKey: key });
   const sections: string[] = [
     "# 🛡️ Rule-Verified MCP Remediation",
     "",
