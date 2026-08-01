@@ -120,6 +120,33 @@ function withTimeout<T>(operation: Promise<T>, timeoutMs: number, label: string)
 }
 
 /**
+ * True when `error` is the SDK rejecting a tools/list response because a tool's
+ * advertised schema is not spec-conformant (e.g. inputSchema.type !== "object"),
+ * as opposed to a transport failure or our own timeout. Such an error describes
+ * a defect in the target, so the scan should report it rather than abort.
+ */
+function isToolSchemaValidationError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (/exceeded \d+ ms\.$/.test(error.message)) return false; // our own timeout
+  if (Array.isArray((error as { issues?: unknown }).issues)) return true; // ZodError
+  return /inputSchema|tools\/list|"tools"/.test(error.message);
+}
+
+/** A short, bounded summary of a schema-validation error for finding evidence. */
+function summarizeSchemaError(error: unknown): string {
+  const issues = (error as { issues?: Array<{ path?: unknown[]; message?: string }> }).issues;
+  if (Array.isArray(issues) && issues.length > 0) {
+    const first = issues[0];
+    const path = Array.isArray(first?.path) ? first.path.join(".") : "?";
+    return `${issues.length} schema issue(s); first at "${path}": ${first?.message ?? ""}`.slice(
+      0,
+      200,
+    );
+  }
+  return (error instanceof Error ? error.message : String(error)).slice(0, 200);
+}
+
+/**
  * Translate an absolute host path into a form Docker accepts as a bind-mount
  * source. On Windows, `C:\Users\x` must become `//c/Users/x`; POSIX paths pass
  * through unchanged.
@@ -292,11 +319,29 @@ async function discover(
       });
     }
     await withTimeout(connecting, config.policy.timeoutMs, "MCP initialization");
-    const response = await withTimeout(
-      client.listTools(),
-      config.policy.timeoutMs,
-      "MCP tools/list",
-    );
+    let response: Awaited<ReturnType<typeof client.listTools>>;
+    try {
+      response = await withTimeout(client.listTools(), config.policy.timeoutMs, "MCP tools/list");
+    } catch (error) {
+      // A spec-non-conformant server (e.g. a tool whose inputSchema.type is not
+      // "object") makes the SDK's strict validation reject the whole tools/list
+      // response. That is a real defect in the target, not a scanner failure —
+      // report it instead of aborting the scan. We can't safely inspect tools we
+      // couldn't parse, so the per-tool surface is skipped for this server.
+      if (!isToolSchemaValidationError(error)) throw error;
+      findings.push({
+        id: "TOOL013",
+        severity: "medium",
+        title: "Advertised tool schema violates the MCP specification",
+        evidence: `The server's tools/list response failed strict MCP schema validation, so a conformant client rejects it: ${summarizeSchemaError(error)}`,
+        recommendation:
+          'Ensure every advertised tool has a JSON Schema inputSchema with type "object". Non-conformant schemas break strict MCP clients.',
+        location: "server",
+        cwe: "CWE-20",
+        owasp: "LLM10",
+      });
+      response = { tools: [] } as Awaited<ReturnType<typeof client.listTools>>;
+    }
     assertMetadataSize(response.tools, "tools/list");
 
     let advertised = response.tools;

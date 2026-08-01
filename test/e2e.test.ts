@@ -61,6 +61,27 @@ test("scanner discovers metadata without invoking fixture tools", async () => {
   );
 });
 
+test("a tool with a spec-non-conformant inputSchema yields TOOL013, not a crash", async () => {
+  const report = await scan(
+    {
+      target: {
+        command: process.execPath,
+        args: [resolve("dist/fixtures/malformed-schema-server.js")],
+        cwd: process.cwd(),
+      },
+      policy: { timeoutMs: 5_000, maxTools: 10 },
+    },
+    true,
+  );
+
+  // The scan must survive a malformed schema and report it rather than throwing.
+  assert.equal(report.execution.connected, true);
+  const tool013 = report.findings.find((finding) => finding.id === "TOOL013");
+  assert.ok(tool013, "expected TOOL013 for the non-conformant tool schema");
+  assert.equal(tool013?.severity, "medium");
+  assert.equal(tool013?.location, "server");
+});
+
 test("advertising more tools than policy.maxTools yields a finding, not a crash", async () => {
   const report = await scan(
     {

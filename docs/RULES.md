@@ -36,6 +36,12 @@ interpreter inline-eval flags (`node -e`, `python -c`, `deno eval`, PowerShell `
 | `TOOL010` | medium   | CWE-400  | LLM10 | Context exhaustion risk: missing pagination limits     |
 | `TOOL011` | high     | CWE-250  | LLM08 | Dangerous capability combination (least privilege)     |
 | `TOOL012` | high     | CWE-1007 | LLM01 | Text contains invisible or control characters          |
+| `TOOL013` | medium   | CWE-20   | LLM10 | Advertised tool schema violates the MCP specification  |
+
+`TOOL013` fires when the server's `tools/list` response fails strict MCP schema validation (for
+example a tool whose `inputSchema.type` is not `"object"`). A conformant client rejects the whole
+response, so the scanner reports the defect and continues instead of aborting; per-tool inspection is
+skipped for the non-conformant server.
 
 `TOOL003` and `TOOL012` are evaluated over the full injection surface: tool descriptions, annotation
 titles, parameter names, enum values, server instructions, and every advertised prompt and resource.
