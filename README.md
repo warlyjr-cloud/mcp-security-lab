@@ -284,33 +284,41 @@ of Claude-assisted MCP security tooling and is under active development.
 
 ## GitHub Action
 
-The repository includes a composite action that generates SARIF and can upload it to GitHub
-code scanning. The calling workflow must grant `security-events: write`.
+The repository includes a composite action that scans your MCP server on every push or PR,
+generates SARIF, and can upload it to GitHub code scanning.
+
+**Zero-config** — point it at your published npm package, no config file needed:
 
 ```yaml
 name: MCP security
-
-on:
-  workflow_dispatch:
-
+on: [push, pull_request]
 permissions:
   contents: read
   security-events: write
-
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.3
+      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.4
         with:
-          config: mcp-security-lab.json
+          package: your-mcp-server # launched via `npx -y`
           execute: "true"
-          upload-sarif: "true"
-          fail-on-findings: "true"
-          comment-pr: "true"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+Building from source instead? Use `command` + `args` (still no config file):
+
+```yaml
+- uses: actions/checkout@v6
+- uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.4
+  with:
+    command: node
+    args: dist/server.js
+    execute: "true"
+```
+
+For advanced setups (custom policy, env, transport) pass a `config:` JSON file instead of
+`package`/`command`. All three are mutually exclusive; provide exactly one. Add
+`comment-pr: "true"` with `github-token: ${{ secrets.GITHUB_TOKEN }}` to post a scorecard on PRs.
 
 Use `execute: "false"` for launch-configuration checks that must not start the target.
 SARIF upload is available for public repositories and for eligible private repositories with
