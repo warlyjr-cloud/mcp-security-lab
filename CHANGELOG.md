@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.4](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.3...mcp-security-lab-v1.4.4) (2026-08-01)
+
+
+### Bug Fixes
+
+* **scanner:** report non-conformant tool schemas instead of crashing ([#56](https://github.com/warlyjr-cloud/mcp-security-lab/issues/56)) ([54f33cd](https://github.com/warlyjr-cloud/mcp-security-lab/commit/54f33cde2a10a0942329cccfea684b25fd745eb7))
+
 ## [1.4.3](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.2...mcp-security-lab-v1.4.3) (2026-07-31)
 
 
