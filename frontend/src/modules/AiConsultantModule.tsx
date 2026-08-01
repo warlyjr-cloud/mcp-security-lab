@@ -18,16 +18,30 @@ export const AiConsultantModule: React.FC = () => {
 
     try {
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const consultPassword = import.meta.env.VITE_CONSULT_PASSWORD;
+      if (consultPassword) {
+        const consultUser = import.meta.env.VITE_CONSULT_USER || 'mcp-consult';
+        headers['Authorization'] = `Basic ${btoa(`${consultUser}:${consultPassword}`)}`;
+      }
+
       const response = await fetch(`${apiBase}/api/consult`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify({
           prompt: userText,
           moduleContext: 'AI Consultant Chat Interface'
         })
       });
+
+      if (response.status === 401) {
+        const message =
+          'Authentication required: set VITE_CONSULT_PASSWORD in frontend/.env to match the ' +
+          "backend's MCP_CONSULT_PASSWORD (see the backend's startup log), then restart the dev server.";
+        setConversation(prev => [...prev, { role: 'ai', text: `Error: ${message}` }]);
+        addLog(`AI Consultant Error: ${message}`);
+        return;
+      }
 
       const data = await response.json();
       if (response.ok) {

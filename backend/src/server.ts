@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Anthropic from '@anthropic-ai/sdk';
@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 dotenv.config();
 
@@ -40,7 +41,55 @@ if (!apiKey) {
 
 const anthropic = new Anthropic({ apiKey: apiKey || 'MISSING_API_KEY' });
 
-app.post('/api/consult', async (req: Request, res: Response): Promise<void> => {
+// This backend binds to loopback and restricts CORS to localhost, but that only
+// keeps *remote* web pages out -- any other local process or user on a shared
+// host can still reach this port and spend the operator's Anthropic quota on
+// /api/consult. Require HTTP Basic Auth for that endpoint. If no password is
+// configured, generate one at startup rather than shipping a hardcoded default
+// credential; the demo stays usable out of the box, but the credential is only
+// ever known to whoever reads this process's own console output.
+const BASIC_AUTH_USER = process.env.MCP_CONSULT_USER || 'mcp-consult';
+const BASIC_AUTH_PASSWORD = process.env.MCP_CONSULT_PASSWORD || randomBytes(18).toString('base64url');
+if (!process.env.MCP_CONSULT_PASSWORD) {
+    console.log(
+        '[MCP Security Lab] MCP_CONSULT_PASSWORD is not set; generated a one-time password for /api/consult:\n' +
+            `  user:     ${BASIC_AUTH_USER}\n` +
+            `  password: ${BASIC_AUTH_PASSWORD}\n` +
+            'Set MCP_CONSULT_USER / MCP_CONSULT_PASSWORD (and the matching VITE_CONSULT_USER / ' +
+            'VITE_CONSULT_PASSWORD in frontend/.env) to pin stable credentials across restarts.',
+    );
+}
+
+/** Fixed-length digest comparison so neither timing nor a length mismatch leaks anything. */
+function timingSafeStringEqual(a: string, b: string): boolean {
+    const digestA = createHash('sha256').update(a).digest();
+    const digestB = createHash('sha256').update(b).digest();
+    return timingSafeEqual(digestA, digestB);
+}
+
+function requireBasicAuth(req: Request, res: Response, next: NextFunction): void {
+    const header = req.headers.authorization || '';
+    const [scheme, encoded] = header.split(' ');
+    if (scheme === 'Basic' && encoded) {
+        const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+        const separatorIndex = decoded.indexOf(':');
+        if (separatorIndex !== -1) {
+            const user = decoded.slice(0, separatorIndex);
+            const password = decoded.slice(separatorIndex + 1);
+            if (
+                timingSafeStringEqual(user, BASIC_AUTH_USER) &&
+                timingSafeStringEqual(password, BASIC_AUTH_PASSWORD)
+            ) {
+                next();
+                return;
+            }
+        }
+    }
+    res.set('WWW-Authenticate', 'Basic realm="MCP Security Lab Consultant"');
+    res.status(401).json({ error: 'Basic authentication required for /api/consult.' });
+}
+
+app.post('/api/consult', requireBasicAuth, async (req: Request, res: Response): Promise<void> => {
     if (!apiKey) {
         res.status(503).json({ error: 'ANTHROPIC_API_KEY is not configured on the server.' });
         return;
