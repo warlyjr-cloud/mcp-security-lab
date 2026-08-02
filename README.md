@@ -306,7 +306,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.4
+      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.5
         with:
           package: your-mcp-server # launched via `npx -y`
           execute: "true"
@@ -316,7 +316,7 @@ Building from source instead? Use `command` + `args` (still no config file):
 
 ```yaml
 - uses: actions/checkout@v6
-- uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.4
+- uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.5
   with:
     command: node
     args: dist/server.js
