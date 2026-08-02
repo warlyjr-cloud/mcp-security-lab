@@ -1,6 +1,7 @@
 # MCP Security Lab — MCP Verifier
 
 [![CI](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/codeql.yml/badge.svg)](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/codeql.yml)
 [![npm version](https://badge.fury.io/js/mcp-security-lab.svg)](https://badge.fury.io/js/mcp-security-lab)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/warlyjr-cloud/mcp-security-lab/badge)](https://securityscorecards.dev/viewer/?uri=github.com/warlyjr-cloud/mcp-security-lab)
@@ -306,7 +307,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.4
+      - uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.5
         with:
           package: your-mcp-server # launched via `npx -y`
           execute: "true"
@@ -316,7 +317,7 @@ Building from source instead? Use `command` + `args` (still no config file):
 
 ```yaml
 - uses: actions/checkout@v6
-- uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.4
+- uses: warlyjr-cloud/mcp-security-lab@mcp-security-lab-v1.4.5
   with:
     command: node
     args: dist/server.js
