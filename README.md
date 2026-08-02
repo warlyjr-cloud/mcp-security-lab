@@ -1,6 +1,7 @@
 # MCP Security Lab — MCP Verifier
 
 [![CI](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/codeql.yml/badge.svg)](https://github.com/warlyjr-cloud/mcp-security-lab/actions/workflows/codeql.yml)
 [![npm version](https://badge.fury.io/js/mcp-security-lab.svg)](https://badge.fury.io/js/mcp-security-lab)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/warlyjr-cloud/mcp-security-lab/badge)](https://securityscorecards.dev/viewer/?uri=github.com/warlyjr-cloud/mcp-security-lab)
