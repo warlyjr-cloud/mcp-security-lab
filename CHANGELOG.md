@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.5](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.4...mcp-security-lab-v1.4.5) (2026-08-02)
+
+
+### Bug Fixes
+
+* **remediator:** delimit untrusted MCP content in Claude prompts, flag injection-origin fixes ([#60](https://github.com/warlyjr-cloud/mcp-security-lab/issues/60)) ([d96ed9b](https://github.com/warlyjr-cloud/mcp-security-lab/commit/d96ed9b40b6710811ffc4a4af4df6244ca62ee1d))
+
 ## [1.4.4](https://github.com/warlyjr-cloud/mcp-security-lab/compare/mcp-security-lab-v1.4.3...mcp-security-lab-v1.4.4) (2026-08-01)
 
 
