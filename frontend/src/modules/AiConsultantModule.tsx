@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppState } from '../store/AppStateContext';
+import { BACKEND_AUTH_HINT, buildBackendHeaders } from '../lib/backendAuth';
 
 export const AiConsultantModule: React.FC = () => {
   const { addLog } = useAppState();
@@ -20,14 +21,25 @@ export const AiConsultantModule: React.FC = () => {
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const response = await fetch(`${apiBase}/api/consult`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: buildBackendHeaders(),
         body: JSON.stringify({
           prompt: userText,
           moduleContext: 'AI Consultant Chat Interface'
         })
       });
+
+      if (response.status === 401) {
+        const message = `Authentication required: ${BACKEND_AUTH_HINT}`;
+        setConversation(prev => [...prev, { role: 'ai', text: `Error: ${message}` }]);
+        addLog(`AI Consultant Error: ${message}`);
+        return;
+      }
+      if (response.status === 429) {
+        const message = 'Too many failed authentication attempts. Try again in a minute.';
+        setConversation(prev => [...prev, { role: 'ai', text: `Error: ${message}` }]);
+        addLog(`AI Consultant Error: ${message}`);
+        return;
+      }
 
       const data = await response.json();
       if (response.ok) {

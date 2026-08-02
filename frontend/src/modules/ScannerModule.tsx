@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppState } from '../store/AppStateContext';
+import { BACKEND_AUTH_HINT, buildBackendHeaders } from '../lib/backendAuth';
 
 interface Finding {
   id: string;
@@ -46,9 +47,21 @@ export const ScannerModule: React.FC = () => {
       const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const response = await fetch(`${apiBase}/api/scan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildBackendHeaders(),
         body: JSON.stringify({ config }),
       });
+
+      if (response.status === 401) {
+        setError(`Authentication required: ${BACKEND_AUTH_HINT}`);
+        addLog('Scan error: authentication required');
+        return;
+      }
+      if (response.status === 429) {
+        setError('Too many failed authentication attempts. Try again in a minute.');
+        addLog('Scan error: rate limited');
+        return;
+      }
+
       const data = await response.json();
       if (response.ok) {
         setFindings(data.findings ?? []);

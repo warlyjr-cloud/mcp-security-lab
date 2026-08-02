@@ -278,6 +278,13 @@ showcase the **Claude-powered Security Consultant** in a browser:
 - The **System Summary** panel shows illustrative aggregate figures (clearly labelled as sample
   data), not a live rollup.
 
+Both `POST /api/consult` and `POST /api/scan` require HTTP Basic Auth so that any other local
+process or user on a shared host can't spend your Anthropic quota or trigger scans for free: set
+`MCP_CONSULT_USER` / `MCP_CONSULT_PASSWORD` for the backend and the matching `VITE_CONSULT_USER` /
+`VITE_CONSULT_PASSWORD` for the frontend. If you don't set a password, the backend generates one at
+startup and prints it once to its console. Repeated failed attempts on either endpoint trigger a
+shared, temporary lockout to slow down local password guessing.
+
 Run `npm install && npm run dev` in `backend/`, then `npm install && npm run dev` in `frontend/`.
 The web UI is not required to use MCP Verifier and is not published to npm; it is a proof-of-concept
 of Claude-assisted MCP security tooling and is under active development.

@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Anthropic from '@anthropic-ai/sdk';
@@ -6,6 +6,8 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { AuthAttemptLimiter, credentialsMatch, parseBasicAuthHeader } from './auth';
 
 dotenv.config();
 
@@ -40,7 +42,52 @@ if (!apiKey) {
 
 const anthropic = new Anthropic({ apiKey: apiKey || 'MISSING_API_KEY' });
 
-app.post('/api/consult', async (req: Request, res: Response): Promise<void> => {
+// This backend binds to loopback and restricts CORS to localhost, but that only
+// keeps *remote* web pages out -- any other local process or user on a shared
+// host can still reach this port, spend the operator's Anthropic quota on
+// /api/consult, or run scans on their behalf via /api/scan. Require HTTP Basic
+// Auth on both endpoints. If no password is configured, generate one at
+// startup rather than shipping a hardcoded default credential; the demo stays
+// usable out of the box, but the credential is only ever known to whoever
+// reads this process's own console output.
+const BASIC_AUTH_USER = process.env.MCP_CONSULT_USER || 'mcp-consult';
+const BASIC_AUTH_PASSWORD = process.env.MCP_CONSULT_PASSWORD || randomBytes(18).toString('base64url');
+if (!process.env.MCP_CONSULT_PASSWORD) {
+    console.log(
+        '[MCP Security Lab] MCP_CONSULT_PASSWORD is not set; generated a one-time password for /api/consult and /api/scan:\n' +
+            `  user:     ${BASIC_AUTH_USER}\n` +
+            `  password: ${BASIC_AUTH_PASSWORD}\n` +
+            'Set MCP_CONSULT_USER / MCP_CONSULT_PASSWORD (and the matching VITE_CONSULT_USER / ' +
+            'VITE_CONSULT_PASSWORD in frontend/.env) to pin stable credentials across restarts.',
+    );
+}
+
+const EXPECTED_CREDENTIALS = { user: BASIC_AUTH_USER, password: BASIC_AUTH_PASSWORD };
+// Shared across both routes: a local attacker guessing the password through
+// /api/consult should also trip the lockout for /api/scan, and vice versa.
+const authLimiter = new AuthAttemptLimiter();
+
+function requireBasicAuth(req: Request, res: Response, next: NextFunction): void {
+    const lockoutRemainingMs = authLimiter.lockoutRemainingMs();
+    if (lockoutRemainingMs > 0) {
+        res.set('Retry-After', String(Math.ceil(lockoutRemainingMs / 1000)));
+        res.status(429).json({ error: 'Too many failed authentication attempts. Try again later.' });
+        return;
+    }
+
+    const provided = parseBasicAuthHeader(req.headers.authorization);
+    if (provided && credentialsMatch(provided, EXPECTED_CREDENTIALS)) {
+        authLimiter.recordSuccess();
+        next();
+        return;
+    }
+
+    authLimiter.recordFailure();
+    res.set('WWW-Authenticate', 'Basic realm="MCP Security Lab"');
+    res.status(401).json({ error: 'Basic authentication required.' });
+}
+
+app.post('/api/consult', requireBasicAuth, async (req: Request, res: Response): Promise<void> => {
     if (!apiKey) {
         res.status(503).json({ error: 'ANTHROPIC_API_KEY is not configured on the server.' });
         return;
@@ -120,7 +167,7 @@ function sanitizeConfig(raw: unknown): SafeConfig | null {
  * execution. The config is strictly rebuilt (sanitizeConfig) before use. To run
  * a full discovery/`--execute` scan, use the CLI directly on a trusted host.
  */
-app.post('/api/scan', async (req: Request, res: Response): Promise<void> => {
+app.post('/api/scan', requireBasicAuth, async (req: Request, res: Response): Promise<void> => {
     const config = sanitizeConfig((req.body ?? {}).config);
     if (config === null) {
         res.status(400).json({
@@ -178,6 +225,10 @@ app.post('/api/scan', async (req: Request, res: Response): Promise<void> => {
 });
 
 // Bind to loopback only: this developer demo must not be reachable off-host.
-app.listen(Number(port), '127.0.0.1', () => {
-    console.log(`[MCP Security Lab] Backend server is running on http://127.0.0.1:${port}`);
-});
+// Guarded so importing this module (e.g. from a future test) never starts a
+// real listener as a side effect.
+if (require.main === module) {
+    app.listen(Number(port), '127.0.0.1', () => {
+        console.log(`[MCP Security Lab] Backend server is running on http://127.0.0.1:${port}`);
+    });
+}

@@ -1,6 +1,7 @@
 import blessed from "blessed";
 import Anthropic from "@anthropic-ai/sdk";
 import type { Finding } from "../types.js";
+import { UNTRUSTED_DATA_INSTRUCTION, wrapUntrusted } from "../prompt-safety.js";
 
 export function openChatModal(screen: blessed.Widgets.Screen, finding: Finding): void {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -69,8 +70,9 @@ export function openChatModal(screen: blessed.Widgets.Screen, finding: Finding):
 
   const systemPrompt = `You are a Cyber-Consultant AI embedded in a hacker-style terminal.
 The user is asking for help fixing this specific vulnerability in their MCP Server:
-${JSON.stringify(finding, null, 2)}
-Give concise, highly technical advice with code snippets. Keep responses short enough to fit in a terminal window.`;
+${wrapUntrusted(JSON.stringify(finding, null, 2))}
+Give concise, highly technical advice with code snippets. Keep responses short enough to fit in a terminal window.
+${UNTRUSTED_DATA_INSTRUCTION}`;
 
   async function sendMessage(text: string): Promise<void> {
     chatLog.add(`{cyan-fg}YOU:{/cyan-fg} ${text}`);
